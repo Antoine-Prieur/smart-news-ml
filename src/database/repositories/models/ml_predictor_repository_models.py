@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from bson import ObjectId
 from pydantic import BaseModel, Field
@@ -8,6 +9,7 @@ class MLPredictorDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     predictor_name: str
     predictor_version: int
+    predictor_weights_path: Path
     active: bool
     created_at: datetime
     updated_at: datetime
