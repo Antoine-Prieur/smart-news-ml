@@ -54,6 +54,7 @@ class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
         predictor_name: str,
         predictor_version: int,
         predictor_weights_path: str | Path,
+        traffic_distribution: float = 0,
         active: bool = True,
     ) -> MLPredictorDocument:
         """Create and insert a new ML predictor with automatic timestamps"""
@@ -61,7 +62,6 @@ class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
 
         now = datetime.now(timezone.utc)
 
-        # Ensure path is a Path object
         if isinstance(predictor_weights_path, str):
             predictor_weights_path = Path(predictor_weights_path)
 
