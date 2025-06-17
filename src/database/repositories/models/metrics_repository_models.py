@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class MLMetricsDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
-    ml_predictor_id: ObjectId
+    predictor_id: ObjectId
     metric_name: str
     metric_value: float
     created_at: datetime

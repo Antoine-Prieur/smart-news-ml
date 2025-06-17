@@ -1,10 +1,10 @@
-from src.database.repositories.models.ml_predictor_repository_models import (
+from src.database.repositories.models.predictor_repository_models import (
     MLPredictorDocument,
 )
-from src.ml.ml_predictor_models import MLPredictor
+from src.services.models.predictor_models import MLPredictor
 
 
-def db_to_domain_ml_predictor(db_model: MLPredictorDocument) -> MLPredictor:
+def db_to_domain_predictor(db_model: MLPredictorDocument) -> MLPredictor:
     """Convert database document to domain model"""
     if db_model.id is None:
         raise ValueError("DB models should always have an ID")
@@ -20,7 +20,7 @@ def db_to_domain_ml_predictor(db_model: MLPredictorDocument) -> MLPredictor:
     )
 
 
-def domain_to_db_ml_predictor(domain_model: MLPredictor) -> MLPredictorDocument:
+def domain_to_db_predictor(domain_model: MLPredictor) -> MLPredictorDocument:
     """Convert domain model to database document"""
     from bson import ObjectId
 

@@ -3,10 +3,12 @@ from datetime import datetime
 from bson import ObjectId
 from pydantic import BaseModel, Field, field_validator
 
+from src.utils.traffic_distribution_utils import validate_traffic_distribution
+
 
 class MLActiveDeploymentDocument(BaseModel):
     predictor_id: ObjectId
-    traffic_distribution: float
+    traffic_percentage: float
 
 
 class MLDeploymentDocument(BaseModel):
@@ -22,13 +24,10 @@ class MLDeploymentDocument(BaseModel):
     def validate_traffic_sum(
         cls, active_deployments: list[MLActiveDeploymentDocument]
     ) -> list[MLActiveDeploymentDocument]:
-        total_traffic = sum(
-            deployment.traffic_distribution for deployment in active_deployments
-        )
-        if abs(total_traffic - 100.0) > 1e-6:
-            raise ValueError(
-                f"Total traffic distribution must equal 100, got {total_traffic}"
-            )
+        traffic_distribution = [
+            deployment.traffic_percentage for deployment in active_deployments
+        ]
+        validate_traffic_distribution(traffic_distribution)
         return active_deployments
 
     class Config:

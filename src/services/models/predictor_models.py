@@ -5,9 +5,9 @@ from pathlib import Path
 from bson import ObjectId
 
 
-@dataclass(frozen=True)
+@dataclass
 class MLPredictor:
-    """Domain model representing an ML Model business entity"""
+    """Domain model representing an Predictor business entity"""
 
     id: ObjectId
     predictor_name: str

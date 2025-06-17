@@ -5,13 +5,11 @@ from bson import ObjectId
 
 from src.database.client import MongoClient
 from src.database.repositories.base_respository import BaseRepository
-from src.database.repositories.models.ml_metrics_repository_models import (
-    MLMetricsDocument,
-)
+from src.database.repositories.models.metrics_repository_models import MLMetricsDocument
 
 
 class MLMetricsRepository(BaseRepository[MLMetricsDocument]):
-    COLLECTION_NAME: str = "ml_metrics"
+    COLLECTION_NAME: str = "metrics"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
@@ -20,7 +18,7 @@ class MLMetricsRepository(BaseRepository[MLMetricsDocument]):
             model_class=MLMetricsDocument,
         )
 
-    async def find_ml_metrics_by_model_predictor_id(
+    async def find_metrics_by_model_predictor_id(
         self, metric_name: str, model_predictor_id: ObjectId | str
     ) -> list[MLMetricsDocument]:
         """Find ML models by source name"""
@@ -37,19 +35,19 @@ class MLMetricsRepository(BaseRepository[MLMetricsDocument]):
 
         return [self._to_model(doc) for doc in docs]
 
-    async def insert_ml_metric(self, ml_metric: MLMetricsDocument) -> MLMetricsDocument:
+    async def insert_metric(self, metric: MLMetricsDocument) -> MLMetricsDocument:
         """Insert a new ML metric document"""
-        doc_dict = self._to_document(ml_metric)
+        doc_dict = self._to_document(metric)
 
         if doc_dict.get("_id") is None:
             doc_dict.pop("_id", None)
 
         result = await self.collection.insert_one(doc_dict)
 
-        ml_metric.id = result.inserted_id
-        return ml_metric
+        metric.id = result.inserted_id
+        return metric
 
-    async def create_ml_metric(
+    async def create_metric(
         self,
         metric_name: str,
         metric_value: float,
@@ -61,12 +59,12 @@ class MLMetricsRepository(BaseRepository[MLMetricsDocument]):
 
         now = datetime.now(timezone.utc)
 
-        ml_metric = MLMetricsDocument(
-            ml_predictor_id=model_predictor_id,
+        metric = MLMetricsDocument(
+            predictor_id=model_predictor_id,
             metric_name=metric_name,
             metric_value=metric_value,
             created_at=now,
             updated_at=now,
         )
 
-        return await self.insert_ml_metric(ml_metric)
+        return await self.insert_metric(metric)

@@ -26,8 +26,11 @@ class BaseRepository(Generic[T], ABC):
         exclude_fields: set[str] = {"id"} if exclude_id else set()
         return model.model_dump(by_alias=True, exclude=exclude_fields)
 
-    async def find_by_id(self, doc_id: str) -> Optional[T]:
-        doc = await self.collection.find_one({"_id": ObjectId(doc_id)})
+    async def find_by_id(self, doc_id: ObjectId | str) -> Optional[T]:
+        if isinstance(doc_id, str):
+            doc = ObjectId(doc_id)
+
+        doc = await self.collection.find_one({"_id": doc_id})
         return self._to_model(doc) if doc else None
 
     async def insert_one(self, model: T) -> str:
