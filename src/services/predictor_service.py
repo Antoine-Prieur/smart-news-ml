@@ -11,6 +11,29 @@ from src.services.models.predictor_models import Prediction, Predictor, Predicto
 
 
 class PredictorService(ABC):
+    """
+    Abstract base class for predictor services that manage machine learning model lifecycle and execution.
+
+    This service provides a standardized interface for loading, managing, and executing predictions
+    with different versions of predictors. It handles metrics collection, event publishing, and
+    maintains active predictor instances with automatic performance monitoring.
+
+    The service integrates with a repository pattern for data persistence and an event bus
+    for publishing metrics and monitoring events during predictor operations.
+
+    Attributes:
+        predictor_repository (PredictorRepository): Repository for predictor data operations
+        event_bus (EventBus): Event bus for publishing metrics and monitoring events
+        active_predictors (dict[int, Predictor]): Dictionary mapping predictor versions to active predictor instances
+
+    Abstract Properties:
+        predictor_name (str): Unique identifier name for the predictor type
+
+    Abstract Methods:
+        _forward(predictor_input: Any) -> Prediction: Execute prediction logic for given input
+        _load_predictor(path: Path, predictor_version: int) -> None: Load predictor model from specified path
+    """
+
     @property
     @abstractmethod
     def predictor_name(self) -> str: ...
@@ -67,7 +90,6 @@ class PredictorService(ABC):
         )
 
     async def forward(self, predictor_input: Any, predictor_version: int) -> Any:
-        """Public method that handles latency tracking automatically"""
         if predictor_version not in self.active_predictors:
             raise ValueError(
                 f"The predictor {self.predictor_name}.{predictor_version} is not active / does not exist"
