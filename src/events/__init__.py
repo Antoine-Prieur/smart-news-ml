@@ -1,5 +1,4 @@
 from src.events.event_bus import EventBus
-from src.events.event_types import BaseEvent, EventType
 
 # Global instance
 _event_bus: EventBus | None = None

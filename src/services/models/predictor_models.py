@@ -6,7 +6,7 @@ from bson import ObjectId
 
 
 @dataclass
-class MLPredictor:
+class Predictor:
     """Domain model representing an Predictor business entity"""
 
     id: ObjectId

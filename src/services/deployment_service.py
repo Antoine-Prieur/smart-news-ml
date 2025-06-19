@@ -1,14 +1,14 @@
 from bson import ObjectId
 
-from src.database.repositories.deployment_repository import MLDeploymentRepository
+from src.database.repositories.deployment_repository import DeploymentRepository
 from src.services.mappers.deployment_mapper import (
     db_to_domain_deployment,
     domain_to_db_active_deployment,
 )
 
 
-class MLDeploymentService:
-    def __init__(self, deployment_repository: MLDeploymentRepository) -> None:
+class DeploymentService:
+    def __init__(self, deployment_repository: DeploymentRepository) -> None:
         self.deployment_repository = deployment_repository
 
     def _redistribute_traffic(

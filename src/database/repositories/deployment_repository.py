@@ -6,26 +6,26 @@ from bson import ObjectId
 from src.database.client import MongoClient
 from src.database.repositories.base_respository import BaseRepository
 from src.database.repositories.models.deployment_repository_models import (
-    MLActiveDeploymentDocument,
-    MLDeploymentDocument,
+    ActiveDeploymentDocument,
+    DeploymentDocument,
 )
 from src.utils.traffic_distribution_utils import validate_traffic_distribution
 
 
-class MLDeploymentRepository(BaseRepository[MLDeploymentDocument]):
+class DeploymentRepository(BaseRepository[DeploymentDocument]):
     COLLECTION_NAME: str = "deployments"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
             collection_name=self.COLLECTION_NAME,
-            model_class=MLDeploymentDocument,
+            model_class=DeploymentDocument,
         )
 
     async def find_deployment_by_name(
         self, predictor_name: str
-    ) -> list[MLDeploymentDocument]:
-        """Find ML deployment by source name"""
+    ) -> list[DeploymentDocument]:
+        """Find  deployment by source name"""
         filters: dict[str, Any] = {}
 
         filters["predictor_name"] = predictor_name
@@ -36,9 +36,9 @@ class MLDeploymentRepository(BaseRepository[MLDeploymentDocument]):
         return [self._to_model(doc) for doc in docs]
 
     async def insert_deployment(
-        self, deployment: MLDeploymentDocument
-    ) -> MLDeploymentDocument:
-        """Insert a new ML predictor document"""
+        self, deployment: DeploymentDocument
+    ) -> DeploymentDocument:
+        """Insert a new  predictor document"""
         doc_dict = self._to_document(deployment)
 
         if doc_dict.get("_id") is None:
@@ -52,12 +52,12 @@ class MLDeploymentRepository(BaseRepository[MLDeploymentDocument]):
     async def create_deployment(
         self,
         predictor_name: str,
-    ) -> MLDeploymentDocument:
-        """Create and insert a new ML predictor with automatic timestamps"""
+    ) -> DeploymentDocument:
+        """Create and insert a new  predictor with automatic timestamps"""
 
         now = datetime.now(timezone.utc)
 
-        deployment = MLDeploymentDocument(
+        deployment = DeploymentDocument(
             predictor_name=predictor_name,
             created_at=now,
             updated_at=now,
@@ -68,8 +68,8 @@ class MLDeploymentRepository(BaseRepository[MLDeploymentDocument]):
     async def update_active_deployments(
         self,
         deployment_id: str | ObjectId,
-        active_deployments: list[MLActiveDeploymentDocument],
-    ) -> MLDeploymentDocument:
+        active_deployments: list[ActiveDeploymentDocument],
+    ) -> DeploymentDocument:
         """Update active deployments and return updated document"""
         if isinstance(deployment_id, str):
             deployment_id = ObjectId(deployment_id)

@@ -5,14 +5,14 @@ from typing import Any, Literal
 
 from bson import ObjectId
 
-from src.database.repositories.metrics_repository import MLMetricsRepository
-from src.database.repositories.models.metrics_repository_models import MLMetricsDocument
-from src.database.repositories.predictor_repository import MLPredictorRepository
+from src.database.repositories.metrics_repository import MetricsRepository
+from src.database.repositories.models.metrics_repository_models import MetricsDocument
+from src.database.repositories.predictor_repository import PredictorRepository
 from src.services.mappers.predictor_mapper import db_to_domain_predictor
-from src.services.models.predictor_models import MLPredictor
+from src.services.models.predictor_models import Predictor
 
 
-class MLPredictorService(ABC):
+class PredictorService(ABC):
     METRICS_LITERAL = Literal["latency", "predictor_loading", "error"]
 
     @property
@@ -27,15 +27,15 @@ class MLPredictorService(ABC):
 
     async def __init__(
         self,
-        predictor_repository: MLPredictorRepository,
-        metrics_repository: MLMetricsRepository,
+        predictor_repository: PredictorRepository,
+        metrics_repository: MetricsRepository,
     ) -> None:
         self.predictor_repository = predictor_repository
         self.metrics_repository = metrics_repository
 
         self.active_predictors = await self._load_active_predictors()
 
-    async def _load_active_predictors(self) -> dict[int, MLPredictor]:
+    async def _load_active_predictors(self) -> dict[int, Predictor]:
         predictors = await self.predictor_repository.find_predictor_by_name(
             self.predictor_name, active=True
         )
@@ -53,7 +53,7 @@ class MLPredictorService(ABC):
         metric_name: METRICS_LITERAL,
         metric_value: float,
         predictor_id: ObjectId,
-    ) -> MLMetricsDocument:
+    ) -> MetricsDocument:
         return await self.metrics_repository.create_metric(
             metric_name, metric_value, predictor_id
         )

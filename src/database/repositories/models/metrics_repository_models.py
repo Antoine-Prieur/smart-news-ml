@@ -4,11 +4,11 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 
-class MLMetricsDocument(BaseModel):
+class MetricsDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
-    predictor_id: ObjectId
     metric_name: str
     metric_value: float
+    tags: dict[str, str] = Field(default_factory=dict[str, str])
     created_at: datetime
     updated_at: datetime
 

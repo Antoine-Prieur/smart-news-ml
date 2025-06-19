@@ -6,15 +6,15 @@ from bson import ObjectId
 
 
 @dataclass
-class MLActiveDeployment:
+class ActiveDeployment:
     predictor_id: ObjectId
     traffic_percentage: float
 
 
 @dataclass
-class MLDeployment:
+class Deployment:
     id: ObjectId
     predictor_name: str
-    active_deployments: List[MLActiveDeployment]
+    active_deployments: List[ActiveDeployment]
     created_at: datetime
     updated_at: datetime

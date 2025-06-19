@@ -5,7 +5,7 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 
-class MLPredictorDocument(BaseModel):
+class PredictorDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     predictor_name: str
     predictor_version: int

@@ -6,10 +6,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from src.database.client import MongoClient
 from src.database.repositories.articles_repository import ArticleRepository
+from src.database.repositories.metrics_repository import MetricsRepository
 
 # Global instances
 _mongo_client: MongoClient | None = None
+
 _article_repository: ArticleRepository | None = None
+_metrics_repository: MetricsRepository | None = None
 
 
 def get_mongo_client() -> MongoClient:
@@ -40,3 +43,13 @@ def get_article_repository() -> ArticleRepository:
         _article_repository = ArticleRepository(mongo_client)
 
     return _article_repository
+
+
+def get_metrics_repository() -> MetricsRepository:
+    """Get MetricsRepository instance"""
+    global _metrics_repository
+    if _metrics_repository is None:
+        mongo_client = get_mongo_client()
+        _metrics_repository = MetricsRepository(mongo_client)
+
+    return _metrics_repository

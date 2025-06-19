@@ -5,24 +5,24 @@ from typing import Any
 from src.database.client import MongoClient
 from src.database.repositories.base_respository import BaseRepository
 from src.database.repositories.models.predictor_repository_models import (
-    MLPredictorDocument,
+    PredictorDocument,
 )
 
 
-class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
+class PredictorRepository(BaseRepository[PredictorDocument]):
     COLLECTION_NAME: str = "predictors"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
             collection_name=self.COLLECTION_NAME,
-            model_class=MLPredictorDocument,
+            model_class=PredictorDocument,
         )
 
     async def find_predictor_by_name(
         self, predictor_name: str, active: bool | None = None
-    ) -> list[MLPredictorDocument]:
-        """Find ML predictors by source name"""
+    ) -> list[PredictorDocument]:
+        """Find  predictors by source name"""
         filters: dict[str, Any] = {}
 
         filters["predictor_name"] = predictor_name
@@ -35,10 +35,8 @@ class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
 
         return [self._to_model(doc) for doc in docs]
 
-    async def insert_predictor(
-        self, predictor: MLPredictorDocument
-    ) -> MLPredictorDocument:
-        """Insert a new ML predictor document"""
+    async def insert_predictor(self, predictor: PredictorDocument) -> PredictorDocument:
+        """Insert a new  predictor document"""
         doc_dict = self._to_document(predictor)
 
         if doc_dict.get("_id") is None:
@@ -56,8 +54,8 @@ class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
         predictor_weights_path: str | Path,
         traffic_percentage: float = 0,
         active: bool = True,
-    ) -> MLPredictorDocument:
-        """Create and insert a new ML predictor with automatic timestamps"""
+    ) -> PredictorDocument:
+        """Create and insert a new  predictor with automatic timestamps"""
         from pathlib import Path
 
         now = datetime.now(timezone.utc)
@@ -65,7 +63,7 @@ class MLPredictorRepository(BaseRepository[MLPredictorDocument]):
         if isinstance(predictor_weights_path, str):
             predictor_weights_path = Path(predictor_weights_path)
 
-        predictor = MLPredictorDocument(
+        predictor = PredictorDocument(
             predictor_name=predictor_name,
             predictor_version=predictor_version,
             predictor_weights_path=predictor_weights_path,
