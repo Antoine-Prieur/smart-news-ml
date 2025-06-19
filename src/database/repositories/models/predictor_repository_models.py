@@ -10,7 +10,6 @@ class PredictorDocument(BaseModel):
     predictor_name: str
     predictor_version: int
     predictor_weights_path: Path
-    active: bool
     created_at: datetime
     updated_at: datetime
 

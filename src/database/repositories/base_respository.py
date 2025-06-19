@@ -1,5 +1,5 @@
-from abc import ABC
-from typing import Any, Generic, Optional, Type, TypeVar
+from abc import ABC, abstractmethod
+from typing import Any, Generic, Type, TypeVar
 
 from bson import ObjectId
 from pydantic import BaseModel
@@ -10,11 +10,13 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class BaseRepository(Generic[T], ABC):
-    def __init__(
-        self, mongo_client: MongoClient, collection_name: str, model_class: Type[T]
-    ):
+    @property
+    @abstractmethod
+    def collection_name(self) -> str: ...
+
+    def __init__(self, mongo_client: MongoClient, model_class: Type[T]):
         self.mongo_client = mongo_client
-        self.collection = mongo_client.database[collection_name]
+        self.collection = mongo_client.database[self.collection_name]
         self.model_class = model_class
 
     def _to_model(self, document: dict[str, Any]) -> T:
@@ -26,12 +28,18 @@ class BaseRepository(Generic[T], ABC):
         exclude_fields: set[str] = {"id"} if exclude_id else set()
         return model.model_dump(by_alias=True, exclude=exclude_fields)
 
-    async def find_by_id(self, doc_id: ObjectId | str) -> Optional[T]:
+    async def find_by_id(self, doc_id: ObjectId | str) -> T:
         if isinstance(doc_id, str):
             doc = ObjectId(doc_id)
 
         doc = await self.collection.find_one({"_id": doc_id})
-        return self._to_model(doc) if doc else None
+
+        if not doc:
+            raise ValueError(
+                f"Document with ObjectId {doc_id} in collection {self.collection_name} not found"
+            )
+
+        return self._to_model(doc)
 
     async def insert_one(self, model: T) -> str:
         doc = self._to_document(model)

@@ -4,12 +4,13 @@ from src.database.repositories.models.articles_repository_models import ArticleD
 
 
 class ArticleRepository(BaseRepository[ArticleDocument]):
-    COLLECTION_NAME: str = "articles"
+    @property
+    def collection_name(self) -> str:
+        return "articles"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
-            collection_name=self.COLLECTION_NAME,
             model_class=ArticleDocument,
         )
 

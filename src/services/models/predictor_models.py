@@ -9,9 +9,10 @@ from bson import ObjectId
 
 class PredictorMetrics(Enum, str):
     PREDICTOR_LATENCY = "predictor_latency"
-    PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
     PREDICTOR_PRICE = "predictor_price"
     PREDICTOR_ERROR = "predictor_error"
+    PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
+    PREDICTOR_LOADING_ERROR = "predictor_loading_error"
 
 
 @dataclass
@@ -28,6 +29,6 @@ class Predictor:
     predictor_name: str
     predictor_version: int
     predictor_weights_path: Path
-    active: bool
+    loaded: bool
     created_at: datetime
     updated_at: datetime

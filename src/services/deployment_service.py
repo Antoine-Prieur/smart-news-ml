@@ -81,9 +81,6 @@ class DeploymentService:
         """Adjust traffic distribution among active deployments."""
         deployment_doc = await self.deployment_repository.find_by_id(deployment_id)
 
-        if deployment_doc is None:
-            raise ValueError(f"Deployment with ID '{deployment_id}' not found")
-
         deployment_domain = db_to_domain_deployment(deployment_doc)
 
         if not deployment_domain.active_deployments:

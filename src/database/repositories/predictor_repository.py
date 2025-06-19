@@ -10,30 +10,33 @@ from src.database.repositories.models.predictor_repository_models import (
 
 
 class PredictorRepository(BaseRepository[PredictorDocument]):
-    COLLECTION_NAME: str = "predictors"
+    @property
+    def collection_name(self) -> str:
+        return "predictors"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
-            collection_name=self.COLLECTION_NAME,
             model_class=PredictorDocument,
         )
 
-    async def find_predictor_by_name(
-        self, predictor_name: str, active: bool | None = None
-    ) -> list[PredictorDocument]:
+    async def find_predictor(
+        self, predictor_name: str, predictor_version: int
+    ) -> PredictorDocument:
         """Find  predictors by source name"""
         filters: dict[str, Any] = {}
 
         filters["predictor_name"] = predictor_name
+        filters["predictor_version"] = predictor_version
 
-        if active is not None:
-            filters["active"] = active
+        doc = await self.collection.find_one(filters)
 
-        cursor = self.collection.find(filters)
-        docs = await cursor.to_list(None)
+        if not doc:
+            raise ValueError(
+                f"Predictor with name {predictor_name} and version {predictor_version} not found"
+            )
 
-        return [self._to_model(doc) for doc in docs]
+        return self._to_model(doc)
 
     async def insert_predictor(self, predictor: PredictorDocument) -> PredictorDocument:
         """Insert a new  predictor document"""
@@ -52,8 +55,6 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         predictor_name: str,
         predictor_version: int,
         predictor_weights_path: str | Path,
-        traffic_percentage: float = 0,
-        active: bool = True,
     ) -> PredictorDocument:
         """Create and insert a new  predictor with automatic timestamps"""
         from pathlib import Path
@@ -67,7 +68,6 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
             predictor_name=predictor_name,
             predictor_version=predictor_version,
             predictor_weights_path=predictor_weights_path,
-            active=active,
             created_at=now,
             updated_at=now,
         )

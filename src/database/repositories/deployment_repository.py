@@ -13,27 +13,30 @@ from src.utils.traffic_distribution_utils import validate_traffic_distribution
 
 
 class DeploymentRepository(BaseRepository[DeploymentDocument]):
-    COLLECTION_NAME: str = "deployments"
+
+    @property
+    def collection_name(self) -> str:
+        return "deployments"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
-            collection_name=self.COLLECTION_NAME,
             model_class=DeploymentDocument,
         )
 
-    async def find_deployment_by_name(
-        self, predictor_name: str
-    ) -> list[DeploymentDocument]:
-        """Find  deployment by source name"""
+    async def find_deployment_by_name(self, predictor_name: str) -> DeploymentDocument:
         filters: dict[str, Any] = {}
 
         filters["predictor_name"] = predictor_name
 
-        cursor = self.collection.find(filters)
-        docs = await cursor.to_list(None)
+        doc = await self.collection.find_one(filters)
 
-        return [self._to_model(doc) for doc in docs]
+        if not doc:
+            raise ValueError(
+                f"Deployment with predictor name {predictor_name} not found"
+            )
+
+        return self._to_model(doc)
 
     async def insert_deployment(
         self, deployment: DeploymentDocument

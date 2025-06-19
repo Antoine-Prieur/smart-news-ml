@@ -7,12 +7,13 @@ from src.database.repositories.models.metrics_repository_models import MetricsDo
 
 
 class MetricsRepository(BaseRepository[MetricsDocument]):
-    COLLECTION_NAME: str = "metrics"
+    @property
+    def collection_name(self) -> str:
+        return "metrics"
 
     def __init__(self, mongo_client: MongoClient):
         super().__init__(
             mongo_client=mongo_client,
-            collection_name=self.COLLECTION_NAME,
             model_class=MetricsDocument,
         )
 
