@@ -1,8 +1,23 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from bson import ObjectId
+
+
+class PredictorMetrics(Enum, str):
+    PREDICTOR_LATENCY = "predictor_latency"
+    PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
+    PREDICTOR_PRICE = "predictor_price"
+    PREDICTOR_ERROR = "predictor_error"
+
+
+@dataclass
+class Prediction:
+    result: Any
+    price: float
 
 
 @dataclass

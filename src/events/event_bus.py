@@ -4,13 +4,26 @@ from src.events.event_types import BaseEvent, EventHandler, EventType
 
 
 class EventBus:
+    """
+    Asynchronous event bus for decoupled communication between components.
+
+    Provides publish-subscribe pattern with async event handling, automatic error
+    isolation, and graceful lifecycle management. Events are processed in order
+    through an internal queue with concurrent handler execution per event.
+
+    Features:
+    - Type-safe event routing based on EventType
+    - Concurrent handler execution with error isolation
+    - Graceful start/stop with queue draining
+    - Automatic error logging and recovery
+    """
+
     def __init__(self):
         self._handlers: dict[EventType, list[EventHandler]] = {}
         self._event_queue: asyncio.Queue[BaseEvent] = asyncio.Queue()
         self._running: bool = False
 
     async def _drain_queue(self):
-        """Process any remaining events in the queue"""
         while not self._event_queue.empty():
             try:
                 event_data = self._event_queue.get_nowait()
@@ -53,17 +66,14 @@ class EventBus:
                 print(f"EventBus: Error processing event: {e}")
 
     def subscribe(self, event_type: EventType, handler: EventHandler):
-        """Handlers register themselves for specific event types"""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
         self._handlers[event_type].append(handler)
 
-    async def publish(self, event_data: BaseEvent) -> None:
-        """Route to appropriate handlers automatically"""
+    def publish(self, event_data: BaseEvent) -> None:
         self._event_queue.put_nowait(event_data)
 
     async def start(self):
-        """Start the event processing loop"""
         if self._running:
             print("EventBus: Already running")
             return
@@ -73,7 +83,6 @@ class EventBus:
         print("EventBus: Started")
 
     async def stop(self):
-        """Stop the event processing loop gracefully"""
         if not self._running:
             print("EventBus: Already stopped")
             return

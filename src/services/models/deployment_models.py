@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
 
 from bson import ObjectId
 
@@ -15,6 +14,6 @@ class ActiveDeployment:
 class Deployment:
     id: ObjectId
     predictor_name: str
-    active_deployments: List[ActiveDeployment]
+    active_deployments: list[ActiveDeployment]
     created_at: datetime
     updated_at: datetime

@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, Optional, Type, TypeVar
 
 from bson import ObjectId
 from pydantic import BaseModel
@@ -38,7 +38,7 @@ class BaseRepository(Generic[T], ABC):
         result = await self.collection.insert_one(doc)
         return str(result.inserted_id)
 
-    async def find_all(self) -> List[T]:
+    async def find_all(self) -> list[T]:
         cursor = self.collection.find()
         docs = await cursor.to_list(None)
         return [self._to_model(doc) for doc in docs]

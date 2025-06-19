@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Protocol
 
@@ -9,8 +10,11 @@ class EventType(Enum):
 
 @dataclass
 class BaseEvent:
-    event_type: EventType
-    timestamp: float
+    event_type: EventType = field(init=False)
+    timestamp: datetime = field(init=False)
+
+    def __post_init__(self):
+        self.timestamp = datetime.now(timezone.utc)
 
 
 class EventHandler(Protocol):
@@ -22,3 +26,7 @@ class MetricsEvent(BaseEvent):
     metric_name: str
     metric_value: float
     tags: dict[str, str]
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.event_type = EventType.METRICS_EVENT
