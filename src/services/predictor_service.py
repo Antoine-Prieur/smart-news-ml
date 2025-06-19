@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
@@ -55,8 +55,29 @@ class PredictorService(ABC):
     ) -> None:
         self.predictor_repository = predictor_repository
         self.event_bus = event_bus
+        self.active_predictors: dict[int, Predictor] = {}
 
-        self.active_predictors = await self._get_active_predictors()
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        if self._initialized:
+            return
+
+        try:
+            self.active_predictors = await self._get_active_predictors()
+            self._initialized = True
+
+        except Exception as e:
+            print(f"Failed to initialize {self.__class__.__name__}: {e}")
+            raise
+
+    @classmethod
+    async def create(
+        cls, predictor_repository: PredictorRepository, event_bus: EventBus
+    ) -> Self:
+        instance = cls(predictor_repository, event_bus)
+        await instance.initialize()
+        return instance
 
     async def _get_active_predictors(self) -> dict[int, Predictor]:
         predictors = await self.predictor_repository.find_predictor_by_name(
