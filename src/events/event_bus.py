@@ -1,5 +1,6 @@
 import asyncio
 
+from src.core.logger import Logger
 from src.events.event_types import BaseEvent, EventHandler, EventType
 
 
@@ -18,10 +19,14 @@ class EventBus:
     - Automatic error logging and recovery
     """
 
-    def __init__(self):
+    def __init__(self, logger: Logger):
         self._handlers: dict[EventType, list[EventHandler]] = {}
         self._event_queue: asyncio.Queue[BaseEvent] = asyncio.Queue()
         self._running: bool = False
+        self.logger = logger
+
+    def _register_handlers(self) -> None:
+        pass
 
     async def _drain_queue(self):
         while not self._event_queue.empty():
@@ -38,7 +43,9 @@ class EventBus:
         try:
             await handler.handle(event_data)
         except Exception as e:
-            print(f"EventBus: Handler {handler.__class__.__name__} failed: {e}")
+            self.logger.error(
+                f"EventBus: Handler {handler.__class__.__name__} failed: {e}"
+            )
 
     async def _handle_event(self, event_data: BaseEvent) -> None:
         handlers = self._handlers.get(event_data.event_type, [])
@@ -60,31 +67,34 @@ class EventBus:
                 self._event_queue.task_done()
 
             except asyncio.CancelledError:
-                print("EventBus: Processing loop cancelled")
+                self.logger.warning("EventBus: Processing loop cancelled")
                 break
             except Exception as e:
-                print(f"EventBus: Error processing event: {e}")
+                self.logger.error(f"EventBus: Error processing event: {e}")
 
-    def subscribe(self, event_type: EventType, handler: EventHandler):
-        if event_type not in self._handlers:
-            self._handlers[event_type] = []
-        self._handlers[event_type].append(handler)
+    def subscribe(self, handler: EventHandler):
+        event_types = handler.event_types
+
+        for event_type in event_types:
+            if event_type not in self._handlers:
+                self._handlers[event_type] = []
+            self._handlers[event_type].append(handler)
 
     def publish(self, event_data: BaseEvent) -> None:
         self._event_queue.put_nowait(event_data)
 
     async def start(self):
         if self._running:
-            print("EventBus: Already running")
+            self.logger.warning("EventBus: Already running")
             return
 
         self._running = True
         self._task = asyncio.create_task(self._process_events_loop())
-        print("EventBus: Started")
+        self.logger.info("EventBus: Started")
 
     async def stop(self):
         if not self._running:
-            print("EventBus: Already stopped")
+            self.logger.warning("EventBus: Already stopped")
             return
 
         self._running = False
@@ -98,4 +108,4 @@ class EventBus:
             self._task = None
 
         await self._drain_queue()
-        print("EventBus: Stopped")
+        self.logger.info("EventBus: Stopped")

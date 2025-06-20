@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Self
 
+from src.core.logger import Logger
 from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.models.predictor_repository_models import (
     PredictorDocument,
@@ -61,10 +62,13 @@ class PredictorService(ABC):
         predictor_repository: PredictorRepository,
         deployment_repository: DeploymentRepository,
         event_bus: EventBus,
+        logger: Logger,
     ) -> None:
         self.predictor_repository = predictor_repository
         self.deployment_repository = deployment_repository
         self.event_bus = event_bus
+        self.logger = logger
+
         self._active_predictors: dict[int, Predictor] = {}
 
         self._initialized = False
@@ -121,7 +125,7 @@ class PredictorService(ABC):
                 )
 
             if predictor.loaded == loaded:
-                print(
+                self.logger.warning(
                     f"Predictor {self.predictor_name}.{predictor_version} has already loaded={loaded}"
                 )
                 return
@@ -137,7 +141,7 @@ class PredictorService(ABC):
             self._initialized = True
 
         except Exception as e:
-            print(f"Failed to initialize {self.__class__.__name__}: {e}")
+            self.logger.error(f"Failed to initialize {self.__class__.__name__}: {e}")
             raise
 
     @classmethod
@@ -146,8 +150,9 @@ class PredictorService(ABC):
         predictor_repository: PredictorRepository,
         deployment_repository: DeploymentRepository,
         event_bus: EventBus,
+        logger: Logger,
     ) -> Self:
-        instance = cls(predictor_repository, deployment_repository, event_bus)
+        instance = cls(predictor_repository, deployment_repository, event_bus, logger)
         await instance.initialize()
         return instance
 

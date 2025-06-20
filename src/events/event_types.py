@@ -18,6 +18,8 @@ class BaseEvent:
 
 
 class EventHandler(Protocol):
+    @property
+    def event_types(self) -> list[EventType]: ...
     async def handle(self, event_data: BaseEvent) -> None: ...
 
 
