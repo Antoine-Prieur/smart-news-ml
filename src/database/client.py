@@ -2,11 +2,13 @@ from typing import Any, Awaitable, Callable
 
 from motor.core import AgnosticClient, AgnosticClientSession
 
+from src.core.settings import Settings
+
 
 class MongoClient:
-    def __init__(self, client: AgnosticClient[Any], database: str) -> None:
+    def __init__(self, client: AgnosticClient[Any], settings: Settings) -> None:
         self.client = client
-        self.database = self.client[database]
+        self.database = self.client[settings.MONGO_DATABASE_NAME]
 
     async def test_connection(self) -> None:
         await self.client.admin.command("ping")
