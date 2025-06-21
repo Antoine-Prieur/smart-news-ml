@@ -10,6 +10,10 @@ class ActiveDeploymentDocument(BaseModel):
     predictor_id: ObjectId
     traffic_percentage: float
 
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
 
 class DeploymentDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")

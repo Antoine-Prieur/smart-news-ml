@@ -25,7 +25,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     mongo_client = providers.Singleton(
-        MongoClient, motor_client=motor_client, settings=settings
+        MongoClient, client=motor_client, settings=settings
     )
 
     # Repositories
@@ -43,7 +43,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Events
-    event_bus = providers.Singleton(EventBus)
+    event_bus = providers.Singleton(EventBus, logger=logger)
     metrics_handler = providers.Singleton(
         MetricsHandler, metrics_repository=metrics_repository
     )
