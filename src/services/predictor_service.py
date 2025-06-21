@@ -4,15 +4,16 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Self
 
+from bson import ObjectId
+
 from src.core.logger import Logger
-from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.models.predictor_repository_models import (
     PredictorDocument,
 )
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.event_types import MetricsEvent
-from src.services.mappers.deployment_mapper import db_to_domain_deployment
+from src.services.deployment_service import DeploymentService
 from src.services.mappers.predictor_mapper import db_to_domain_predictor
 from src.services.models.predictor_models import Prediction, Predictor, PredictorMetrics
 
@@ -60,12 +61,12 @@ class PredictorService(ABC):
     def __init__(
         self,
         predictor_repository: PredictorRepository,
-        deployment_repository: DeploymentRepository,
+        deployment_service: DeploymentService,
         event_bus: EventBus,
         logger: Logger,
     ) -> None:
         self.predictor_repository = predictor_repository
-        self.deployment_repository = deployment_repository
+        self.deployment_service = deployment_service
         self.event_bus = event_bus
         self.logger = logger
 
@@ -87,10 +88,9 @@ class PredictorService(ABC):
             return self._active_predictors.copy()
 
     async def _update_active_predictors(self) -> None:
-        deployment = await self.deployment_repository.find_deployment_by_name(
+        deployment_domain = await self.deployment_service.find_deployment_by_name(
             self.predictor_name
         )
-        deployment_domain = db_to_domain_deployment(deployment)
 
         predictors: list[PredictorDocument] = []
 
@@ -114,6 +114,13 @@ class PredictorService(ABC):
     async def _get_predictor(self, predictor_version: int) -> Predictor | None:
         async with self._active_predictors_lock:
             return self._active_predictors.get(predictor_version)
+
+    async def _get_predictor_by_id(self, predictor_id: ObjectId) -> Predictor | None:
+        async with self._active_predictors_lock:
+            for predictor in self._active_predictors.values():
+                if predictor.id == predictor_id:
+                    return predictor
+        return None
 
     async def _update_predictor(self, predictor_version: int, loaded: bool) -> None:
         async with self._active_predictors_lock:
@@ -148,11 +155,11 @@ class PredictorService(ABC):
     async def create(
         cls,
         predictor_repository: PredictorRepository,
-        deployment_repository: DeploymentRepository,
+        deployment_service: DeploymentService,
         event_bus: EventBus,
         logger: Logger,
     ) -> Self:
-        instance = cls(predictor_repository, deployment_repository, event_bus, logger)
+        instance = cls(predictor_repository, deployment_service, event_bus, logger)
         await instance.initialize()
         return instance
 
@@ -190,15 +197,35 @@ class PredictorService(ABC):
             )
         )
 
-    async def forward(self, predictor_input: Any, predictor_version: int) -> Any:
+    async def forward(
+        self, predictor_input: Any, predictor_version: int | None = None
+    ) -> Any:
         self._ensure_initialized()
 
-        predictor = await self._get_predictor(predictor_version)
-
-        if predictor is None:
-            raise ValueError(
-                f"The predictor {self.predictor_name}.{predictor_version} is not active / does not exist"
+        if predictor_version is None:
+            selected_predictor_id = (
+                await self.deployment_service.select_predictor_randomly(
+                    self.predictor_name
+                )
             )
+            predictor = await self._get_predictor_by_id(selected_predictor_id)
+
+            if predictor is None:
+                raise ValueError(
+                    f"Selected predictor {selected_predictor_id} not found in active predictors"
+                )
+
+            selected_version = predictor.predictor_version
+            self.logger.info(
+                f"A/B testing selected predictor ID: {selected_predictor_id}, version: {selected_version}"
+            )
+        else:
+            predictor = await self._get_predictor(predictor_version)
+
+            if predictor is None:
+                raise ValueError(
+                    f"The predictor {self.predictor_name}.{predictor_version} is not active / does not exist"
+                )
 
         if not predictor.loaded:
             await self.load_predictor(
@@ -216,7 +243,7 @@ class PredictorService(ABC):
                 MetricsEvent(
                     metric_name=PredictorMetrics.PREDICTOR_LATENCY,
                     metric_value=latency,
-                    tags=self.tags(predictor_version),
+                    tags=self.tags(predictor.predictor_version),
                 )
             )
 
@@ -224,7 +251,7 @@ class PredictorService(ABC):
                 MetricsEvent(
                     metric_name=PredictorMetrics.PREDICTOR_PRICE,
                     metric_value=result.price,
-                    tags=self.tags(predictor_version),
+                    tags=self.tags(predictor.predictor_version),
                 )
             )
 
@@ -238,7 +265,7 @@ class PredictorService(ABC):
                 MetricsEvent(
                     metric_name=PredictorMetrics.PREDICTOR_ERROR,
                     metric_value=1,
-                    tags=self.tags(predictor_version),
+                    tags=self.tags(predictor.predictor_version),
                 )
             )
             raise

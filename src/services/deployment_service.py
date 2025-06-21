@@ -1,3 +1,5 @@
+import random
+
 from bson import ObjectId
 
 from src.database.repositories.deployment_repository import DeploymentRepository
@@ -5,6 +7,7 @@ from src.services.mappers.deployment_mapper import (
     db_to_domain_deployment,
     domain_to_db_active_deployment,
 )
+from src.services.models.deployment_models import Deployment
 
 
 class DeploymentService:
@@ -109,3 +112,35 @@ class DeploymentService:
         await self.deployment_repository.update_active_deployments(
             deployment_id, active_deployment_docs
         )
+
+    async def find_deployment_by_name(self, predictor_name: str) -> Deployment:
+        deployment_doc = await self.deployment_repository.find_deployment_by_name(
+            predictor_name
+        )
+        return db_to_domain_deployment(deployment_doc)
+
+    async def select_predictor_randomly(self, predictor_name: str) -> ObjectId:
+        deployment_doc = await self.deployment_repository.find_deployment_by_name(
+            predictor_name
+        )
+        deployment_domain = db_to_domain_deployment(deployment_doc)
+
+        if not deployment_domain.active_deployments:
+            raise ValueError(f"No active deployments for predictor: {predictor_name}")
+
+        cumulative_weights: list[float] = []
+        predictor_ids: list[ObjectId] = []
+        cumulative_sum = 0
+
+        for active_deployment in deployment_domain.active_deployments:
+            cumulative_sum += active_deployment.traffic_percentage
+            cumulative_weights.append(cumulative_sum)
+            predictor_ids.append(active_deployment.predictor_id)
+
+        random_value = random.uniform(0, 100)
+
+        for i, weight in enumerate(cumulative_weights):
+            if random_value <= weight:
+                return predictor_ids[i]
+
+        return predictor_ids[-1]
