@@ -3,6 +3,7 @@ from typing import Any, Generic, Type, TypeVar
 
 from bson import ObjectId
 from pydantic import BaseModel
+from pymongo import IndexModel
 
 from src.database.client import MongoClient
 
@@ -18,6 +19,11 @@ class BaseRepository(Generic[T], ABC):
         self.mongo_client = mongo_client
         self.collection = mongo_client.database[self.collection_name]
         self.model_class = model_class
+
+        self._initialized = False
+
+    async def setup(self) -> None:
+        await self._create_indexes()
 
     def _to_model(self, document: dict[str, Any]) -> T:
         """Convert MongoDB document to Pydantic model"""
@@ -50,3 +56,17 @@ class BaseRepository(Generic[T], ABC):
         cursor = self.collection.find()
         docs = await cursor.to_list(None)
         return [self._to_model(doc) for doc in docs]
+
+    @property
+    def indexes(self) -> list[IndexModel]:
+        return []
+
+    async def _create_indexes(self) -> None:
+        if self._initialized:
+            return
+            
+        if self.indexes:
+            await self.collection.create_indexes(self.indexes)
+            
+        self._initialized = True
+

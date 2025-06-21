@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
+from pymongo import ASCENDING, IndexModel
 
 from src.database.client import MongoClient
 from src.database.repositories.base_respository import BaseRepository
@@ -23,6 +24,17 @@ class DeploymentRepository(BaseRepository[DeploymentDocument]):
             mongo_client=mongo_client,
             model_class=DeploymentDocument,
         )
+
+
+    @property
+    def indexes(self) -> list[IndexModel]:
+        return [
+            IndexModel(
+                [("predictor_name", ASCENDING)],
+                unique=True,
+                name="predictor_name_unique"
+            ),
+        ]
 
     async def find_deployment_by_name(self, predictor_name: str) -> DeploymentDocument:
         filters: dict[str, Any] = {}
