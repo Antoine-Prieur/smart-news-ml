@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "684c16227d407d8e8130854c",
+    "source": {
+      "id": "google-news",
+      "name": "Google News"
+    },
+    "author": "NPR",
+    "title": "Air India plane carrying more than 240 people crashes in India's Ahmedabad city - NPR",
+    "description": null,
+    "url": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOaUlRNDZzWWZSTHZnNFIxUENtVFE2NnpWcVJEaUVvRGpsLUxIWnQwQmxvNFZlNGdLRlBKMVprbWZxeUpXWHRQV1RPdFR5UHJFeWM0Rnl4MnZrdGhmNnpGZVVkNjhWTy0wYWpYeFVyTU1WNUx4TGw0bmU5TEFRRF8xSnZRQQ?oc=5",
+    "url_to_image": null,
+    "published_at": "2025-06-12T09:37:37Z",
+    "content": null,
+    "created_at": "2025-06-13T12:14:26.135667641Z",
+    "updated_at": "2025-06-13T12:14:26.135667641Z"
+  },
+  {
+    "_id": "684c16227d407d8e8130854d",
+    "source": {
+      "id": null,
+      "name": "BBC News"
+    },
+    "author": null,
+    "title": "Chris Mason: Spending Review a gamble on patience in an era of impatience - BBC",
+    "description": "The big bet for the government remains on economic growth - finding it and sustaining it.",
+    "url": "https://www.bbc.com/news/articles/cj09lz0q5pno",
+    "url_to_image": "https://ichef.bbci.co.uk/news/1024/branded_news/f497/live/d115dd40-4767-11f0-84b6-6bf0f66205f1.jpg",
+    "published_at": "2025-06-12T08:04:16Z",
+    "content": "Chris Mason\r\nThe hours, days, weeks and even months after a Spending Review can feel like peeling away the layers of an onion.\r\nFirst, there is the speech from the chancellor in the Commons: the poli… [+3371 chars]",
+    "created_at": "2025-06-13T12:14:26.135668189Z",
+    "updated_at": "2025-06-13T12:14:26.135668189Z"
+  },
+  {
+    "_id": "684c16227d407d8e8130854e",
+    "source": {
+      "id": null,
+      "name": "9to5google.com"
+    },
+    "author": "Abner Li",
+    "title": "Google says Android Open Source Project not being ‘discontinued’ amidst Pixel change impacting custom ROMs - 9to5Google",
+    "description": "With the launch of Android 16 earlier this week, Google did not release the Pixel hardware repos and device trees...",
+    "url": "http://9to5google.com/2025/06/12/android-open-source-project-pixel-change/",
+    "url_to_image": "https://i0.wp.com/9to5google.com/wp-content/uploads/sites/4/2025/03/Android-Bot-pin-badge-holding-Pixel.jpg?resize=1200%2C628&quality=82&strip=all&ssl=1",
+    "published_at": "2025-06-12T07:49:00Z",
+    "content": "With the launch of Android 16 earlier this week, Google did not release the Pixel hardware repos and device trees that are particularly important for custom ROM developers. This led to speculation by… [+1670 chars]",
+    "created_at": "2025-06-13T12:14:26.135668284Z",
+    "updated_at": "2025-06-13T12:14:26.135668284Z"
+  }
+]
