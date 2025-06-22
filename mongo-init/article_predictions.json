@@ -1,0 +1,122 @@
+[
+  {
+    "_id": "684c16227d407d8e81308580",
+    "article_id": "684c16227d407d8e8130854c",
+    "prediction_type": "sentiment_analysis",
+    "selected_prediction": "684c16227d407d8e81308560",
+    "predictions": {
+      "684c16227d407d8e81308560": {
+        "prediction_confidence": 0.92,
+        "prediction_value": "negative"
+      },
+      "684c16227d407d8e81308561": {
+        "prediction_confidence": 0.89,
+        "prediction_value": "negative"
+      }
+    },
+    "created_at": "2025-06-13T12:15:00.000000000Z",
+    "updated_at": "2025-06-13T12:20:30.000000000Z"
+  },
+  {
+    "_id": "684c16227d407d8e81308581",
+    "article_id": "684c16227d407d8e8130854d",
+    "prediction_type": "sentiment_analysis",
+    "selected_prediction": "684c16227d407d8e81308561",
+    "predictions": {
+      "684c16227d407d8e81308560": {
+        "prediction_confidence": 0.67,
+        "prediction_value": "neutral"
+      },
+      "684c16227d407d8e81308561": {
+        "prediction_confidence": 0.73,
+        "prediction_value": "neutral"
+      }
+    },
+    "created_at": "2025-06-13T12:15:30.000000000Z",
+    "updated_at": "2025-06-13T12:15:30.000000000Z"
+  },
+  {
+    "_id": "684c16227d407d8e81308582",
+    "article_id": "684c16227d407d8e8130854e",
+    "prediction_type": "sentiment_analysis",
+    "selected_prediction": "684c16227d407d8e81308560",
+    "predictions": {
+      "684c16227d407d8e81308560": {
+        "prediction_confidence": 0.85,
+        "prediction_value": "positive"
+      }
+    },
+    "created_at": "2025-06-13T12:16:00.000000000Z",
+    "updated_at": "2025-06-13T12:16:00.000000000Z"
+  },
+  {
+    "_id": "684c16227d407d8e81308583",
+    "article_id": "684c16227d407d8e8130854c",
+    "prediction_type": "clustering",
+    "selected_prediction": "684c16227d407d8e81308563",
+    "predictions": {
+      "684c16227d407d8e81308563": {
+        "prediction_confidence": null,
+        "prediction_value": {
+          "cluster_id": 2,
+          "cluster_name": "breaking_news",
+          "distance": 0.23
+        }
+      }
+    },
+    "created_at": "2025-06-13T12:17:00.000000000Z",
+    "updated_at": "2025-06-13T12:17:00.000000000Z"
+  },
+  {
+    "_id": "684c16227d407d8e81308584",
+    "article_id": "684c16227d407d8e8130854d",
+    "prediction_type": "clustering",
+    "selected_prediction": "684c16227d407d8e81308563",
+    "predictions": {
+      "684c16227d407d8e81308563": {
+        "prediction_confidence": null,
+        "prediction_value": {
+          "cluster_id": 1,
+          "cluster_name": "politics",
+          "distance": 0.15
+        }
+      }
+    },
+    "created_at": "2025-06-13T12:17:30.000000000Z",
+    "updated_at": "2025-06-13T12:17:30.000000000Z"
+  },
+  {
+    "_id": "684c16227d407d8e81308585",
+    "article_id": "684c16227d407d8e8130854e",
+    "prediction_type": "text_classification",
+    "selected_prediction": "684c16227d407d8e81308567",
+    "predictions": {
+      "684c16227d407d8e81308566": {
+        "prediction_confidence": 0.78,
+        "prediction_value": {
+          "category": "technology",
+          "subcategory": "mobile",
+          "confidence_scores": {
+            "technology": 0.78,
+            "business": 0.15,
+            "news": 0.07
+          }
+        }
+      },
+      "684c16227d407d8e81308567": {
+        "prediction_confidence": 0.82,
+        "prediction_value": {
+          "category": "technology",
+          "subcategory": "software",
+          "confidence_scores": {
+            "technology": 0.82,
+            "business": 0.12,
+            "news": 0.06
+          }
+        }
+      }
+    },
+    "created_at": "2025-06-13T12:18:00.000000000Z",
+    "updated_at": "2025-06-13T12:19:15.000000000Z"
+  }
+]
