@@ -1,3 +1,7 @@
+# TODO: update to have only one predictor per instance
+# In the case of A/B deployment, just create another instance
+# -> makes it easier when deploying a total new type of model for the same task
+# -> also easier to manage
 import asyncio
 import time
 from abc import ABC, abstractmethod
@@ -51,6 +55,9 @@ class PredictorService(ABC):
 
     @abstractmethod
     def _load_predictor(self, path: Path, predictor_version: int) -> None: ...
+
+    @abstractmethod
+    def _unload_load_predictor(self, path: Path, predictor_version: int) -> None: ...
 
     def tags(self, predictor_version: int) -> dict[str, str]:
         return {
@@ -121,23 +128,6 @@ class PredictorService(ABC):
                 if predictor.id == predictor_id:
                     return predictor
         return None
-
-    async def _update_predictor(self, predictor_version: int, loaded: bool) -> None:
-        async with self._active_predictors_lock:
-            predictor = self._active_predictors.get(predictor_version)
-
-            if predictor is None:
-                raise ValueError(
-                    f"Predictor {self.prediction_type}.{predictor_version} does not exists"
-                )
-
-            if predictor.loaded == loaded:
-                self.logger.warning(
-                    f"Predictor {self.prediction_type}.{predictor_version} has already loaded={loaded}"
-                )
-                return
-
-            predictor.loaded = loaded
 
     async def initialize(self) -> None:
         if self._initialized:
