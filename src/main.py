@@ -5,6 +5,9 @@ from dependency_injector.wiring import Provide, inject
 from src.container import Container
 from src.core.logger import Logger
 from src.database.client import MongoClient
+from src.database.repositories.articles_predictions_repository import (
+    ArticlePredictionsRepository,
+)
 from src.database.repositories.articles_repository import ArticleRepository
 from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
@@ -46,6 +49,9 @@ class MLPlatformSetup:
         predictor_repository: PredictorRepository = Provide[
             Container.predictor_repository
         ],
+        article_predictions_repository: ArticlePredictionsRepository = Provide[
+            Container.article_predictions_repository
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize all repositories and create database indexes"""
@@ -54,6 +60,7 @@ class MLPlatformSetup:
             ("Deployment", deployment_repository),
             ("Metrics", metrics_repository),
             ("Predictor", predictor_repository),
+            ("Article Predictions", article_predictions_repository),
         ]
 
         for name, repo in repositories:

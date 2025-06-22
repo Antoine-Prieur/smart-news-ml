@@ -4,6 +4,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from src.core.logger import Logger
 from src.core.settings import Settings
 from src.database.client import MongoClient
+from src.database.repositories.articles_predictions_repository import (
+    ArticlePredictionsRepository,
+)
 from src.database.repositories.articles_repository import ArticleRepository
 from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
@@ -40,6 +43,10 @@ class Container(containers.DeclarativeContainer):
     )
     predictor_repository = providers.Singleton(
         PredictorRepository, mongo_client=mongo_client
+    )
+
+    article_predictions_repository = providers.Singleton(
+        ArticlePredictionsRepository, mongo_client=mongo_client
     )
 
     # Events
