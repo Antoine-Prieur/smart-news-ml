@@ -13,7 +13,7 @@ class ActiveDeployment:
 @dataclass
 class Deployment:
     id: ObjectId
-    predictor_name: str
+    prediction_type: str
     active_deployments: list[ActiveDeployment]
     created_at: datetime
     updated_at: datetime

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class PredictorDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
-    predictor_name: str
+    prediction_type: str
     predictor_version: int
     predictor_weights_path: Path
     created_at: datetime

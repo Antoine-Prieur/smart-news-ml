@@ -17,7 +17,7 @@ class ActiveDeploymentDocument(BaseModel):
 
 class DeploymentDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
-    predictor_name: str
+    prediction_type: str
     active_deployments: list[ActiveDeploymentDocument] = Field(
         default_factory=list[ActiveDeploymentDocument]
     )

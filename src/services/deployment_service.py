@@ -113,20 +113,20 @@ class DeploymentService:
             deployment_id, active_deployment_docs
         )
 
-    async def find_deployment_by_name(self, predictor_name: str) -> Deployment:
+    async def find_deployment_by_name(self, prediction_type: str) -> Deployment:
         deployment_doc = await self.deployment_repository.find_deployment_by_name(
-            predictor_name
+            prediction_type
         )
         return db_to_domain_deployment(deployment_doc)
 
-    async def select_predictor_randomly(self, predictor_name: str) -> ObjectId:
+    async def select_predictor_randomly(self, prediction_type: str) -> ObjectId:
         deployment_doc = await self.deployment_repository.find_deployment_by_name(
-            predictor_name
+            prediction_type
         )
         deployment_domain = db_to_domain_deployment(deployment_doc)
 
         if not deployment_domain.active_deployments:
-            raise ValueError(f"No active deployments for predictor: {predictor_name}")
+            raise ValueError(f"No active deployments for predictor: {prediction_type}")
 
         cumulative_weights: list[float] = []
         predictor_ids: list[ObjectId] = []

@@ -26,35 +26,34 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
     def indexes(self) -> list[IndexModel]:
         return [
             IndexModel(
-                [("predictor_name", ASCENDING), ("predictor_version", ASCENDING)],
+                [("prediction_type", ASCENDING), ("predictor_version", ASCENDING)],
                 unique=True,
-                name="predictor_name_version_unique"
+                name="prediction_type_version_unique",
             ),
-            IndexModel(
-                [("predictor_name", ASCENDING)],
-                name="predictor_name_index"
-            )
+            IndexModel([("prediction_type", ASCENDING)], name="prediction_type_index"),
         ]
 
     async def find_predictor(
-        self, predictor_name: str, predictor_version: int
+        self, prediction_type: str, predictor_version: int
     ) -> PredictorDocument:
         """Find  predictors by source name"""
         filters: dict[str, Any] = {}
 
-        filters["predictor_name"] = predictor_name
+        filters["prediction_type"] = prediction_type
         filters["predictor_version"] = predictor_version
 
         doc = await self.collection.find_one(filters)
 
         if not doc:
             raise ValueError(
-                f"Predictor with name {predictor_name} and version {predictor_version} not found"
+                f"Predictor with name {prediction_type} and version {predictor_version} not found"
             )
 
         return self._to_model(doc)
 
-    async def _insert_predictor(self, predictor: PredictorDocument) -> PredictorDocument:
+    async def _insert_predictor(
+        self, predictor: PredictorDocument
+    ) -> PredictorDocument:
         """Insert a new  predictor document"""
         doc_dict = self._to_document(predictor)
 
@@ -68,7 +67,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
     async def create_predictor(
         self,
-        predictor_name: str,
+        prediction_type: str,
         predictor_weights_path: str | Path,
     ) -> PredictorDocument:
         now = datetime.now(timezone.utc)
@@ -76,10 +75,10 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         if isinstance(predictor_weights_path, str):
             predictor_weights_path = Path(predictor_weights_path)
 
-        max_version = await self.get_max_version(predictor_name)
+        max_version = await self.get_max_version(prediction_type)
 
         predictor = PredictorDocument(
-            predictor_name=predictor_name,
+            prediction_type=prediction_type,
             predictor_version=max_version + 1,
             predictor_weights_path=predictor_weights_path,
             created_at=now,
@@ -88,26 +87,28 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
         return await self._insert_predictor(predictor)
 
-    async def get_max_version(self, predictor_name: str) -> int:
-        if not predictor_name or not predictor_name.strip():
+    async def get_max_version(self, prediction_type: str) -> int:
+        if not prediction_type or not prediction_type.strip():
             raise ValueError("Predictor name cannot be empty or None")
 
         pipeline = [
-            {"$match": {"predictor_name": predictor_name}},
-            {"$group": {"_id": None, "max_version": {"$max": "$predictor_version"}}}
+            {"$match": {"prediction_type": prediction_type}},
+            {"$group": {"_id": None, "max_version": {"$max": "$predictor_version"}}},
         ]
-        
+
         result = await self.collection.aggregate(pipeline).to_list(1)
-        
+
         if not result or result[0]["max_version"] is None:
             return 0
-            
+
         return result[0]["max_version"]
 
-    async def find_predictors_by_name(self, predictor_name: str) -> list[PredictorDocument]:
-        filters: dict[str, Any] = {"predictor_name": predictor_name}
-        
+    async def find_predictors_by_name(
+        self, prediction_type: str
+    ) -> list[PredictorDocument]:
+        filters: dict[str, Any] = {"prediction_type": prediction_type}
+
         cursor = self.collection.find(filters).sort("predictor_version", -1)
         docs = await cursor.to_list(None)
-        
+
         return [self._to_model(doc) for doc in docs]

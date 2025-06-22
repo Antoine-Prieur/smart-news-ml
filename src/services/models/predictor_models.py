@@ -26,7 +26,7 @@ class Predictor:
     """Domain model representing an Predictor business entity"""
 
     id: ObjectId
-    predictor_name: str
+    prediction_type: str
     predictor_version: int
     predictor_weights_path: Path
     loaded: bool

@@ -35,7 +35,7 @@ class PredictorService(ABC):
         active_predictors (dict[int, Predictor]): Dictionary mapping predictor versions to active predictor instances
 
     Abstract Properties:
-        predictor_name (str): Unique identifier name for the predictor type
+        prediction_type (str): Unique identifier name for the predictor type
 
     Abstract Methods:
         _forward(predictor_input: Any) -> Prediction: Execute prediction logic for given input
@@ -44,7 +44,7 @@ class PredictorService(ABC):
 
     @property
     @abstractmethod
-    def predictor_name(self) -> str: ...
+    def prediction_type(self) -> str: ...
 
     @abstractmethod
     def _forward(self, predictor_input: Any) -> Prediction: ...
@@ -54,7 +54,7 @@ class PredictorService(ABC):
 
     def tags(self, predictor_version: int) -> dict[str, str]:
         return {
-            "predictor_name": self.predictor_name,
+            "prediction_type": self.prediction_type,
             "predictor_version": str(predictor_version),
         }
 
@@ -89,7 +89,7 @@ class PredictorService(ABC):
 
     async def _update_active_predictors(self) -> None:
         deployment_domain = await self.deployment_service.find_deployment_by_name(
-            self.predictor_name
+            self.prediction_type
         )
 
         predictors: list[PredictorDocument] = []
@@ -128,12 +128,12 @@ class PredictorService(ABC):
 
             if predictor is None:
                 raise ValueError(
-                    f"Predictor {self.predictor_name}.{predictor_version} does not exists"
+                    f"Predictor {self.prediction_type}.{predictor_version} does not exists"
                 )
 
             if predictor.loaded == loaded:
                 self.logger.warning(
-                    f"Predictor {self.predictor_name}.{predictor_version} has already loaded={loaded}"
+                    f"Predictor {self.prediction_type}.{predictor_version} has already loaded={loaded}"
                 )
                 return
 
@@ -182,7 +182,7 @@ class PredictorService(ABC):
                 )
             )
             raise ValueError(
-                f"Failed to load predictor {self.predictor_name}.{predictor_version}: {exc}"
+                f"Failed to load predictor {self.prediction_type}.{predictor_version}: {exc}"
             )
 
         end_time = time.perf_counter()
@@ -205,7 +205,7 @@ class PredictorService(ABC):
         if predictor_version is None:
             selected_predictor_id = (
                 await self.deployment_service.select_predictor_randomly(
-                    self.predictor_name
+                    self.prediction_type
                 )
             )
             predictor = await self._get_predictor_by_id(selected_predictor_id)
@@ -224,7 +224,7 @@ class PredictorService(ABC):
 
             if predictor is None:
                 raise ValueError(
-                    f"The predictor {self.predictor_name}.{predictor_version} is not active / does not exist"
+                    f"The predictor {self.prediction_type}.{predictor_version} is not active / does not exist"
                 )
 
         if not predictor.loaded:

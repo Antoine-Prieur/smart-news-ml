@@ -25,27 +25,26 @@ class DeploymentRepository(BaseRepository[DeploymentDocument]):
             model_class=DeploymentDocument,
         )
 
-
     @property
     def indexes(self) -> list[IndexModel]:
         return [
             IndexModel(
-                [("predictor_name", ASCENDING)],
+                [("prediction_type", ASCENDING)],
                 unique=True,
-                name="predictor_name_unique"
+                name="prediction_type_unique",
             ),
         ]
 
-    async def find_deployment_by_name(self, predictor_name: str) -> DeploymentDocument:
+    async def find_deployment_by_name(self, prediction_type: str) -> DeploymentDocument:
         filters: dict[str, Any] = {}
 
-        filters["predictor_name"] = predictor_name
+        filters["prediction_type"] = prediction_type
 
         doc = await self.collection.find_one(filters)
 
         if not doc:
             raise ValueError(
-                f"Deployment with predictor name {predictor_name} not found"
+                f"Deployment with predictor name {prediction_type} not found"
             )
 
         return self._to_model(doc)
@@ -66,14 +65,14 @@ class DeploymentRepository(BaseRepository[DeploymentDocument]):
 
     async def create_deployment(
         self,
-        predictor_name: str,
+        prediction_type: str,
     ) -> DeploymentDocument:
         """Create and insert a new  predictor with automatic timestamps"""
 
         now = datetime.now(timezone.utc)
 
         deployment = DeploymentDocument(
-            predictor_name=predictor_name,
+            prediction_type=prediction_type,
             created_at=now,
             updated_at=now,
         )

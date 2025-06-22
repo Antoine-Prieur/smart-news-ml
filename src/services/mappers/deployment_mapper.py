@@ -39,7 +39,7 @@ def db_to_domain_deployment(db_model: DeploymentDocument) -> Deployment:
 
     return Deployment(
         id=db_model.id,
-        predictor_name=db_model.predictor_name,
+        prediction_type=db_model.prediction_type,
         active_deployments=active_deployments,
         created_at=db_model.created_at,
         updated_at=db_model.updated_at,
@@ -57,7 +57,7 @@ def domain_to_db_deployment(domain_model: Deployment) -> DeploymentDocument:
 
     return DeploymentDocument(
         _id=ObjectId(domain_model.id),
-        predictor_name=domain_model.predictor_name,
+        prediction_type=domain_model.prediction_type,
         active_deployments=active_deployments,
         created_at=domain_model.created_at,
         updated_at=domain_model.updated_at,

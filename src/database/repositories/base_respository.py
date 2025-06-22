@@ -36,7 +36,7 @@ class BaseRepository(Generic[T], ABC):
 
     async def find_by_id(self, doc_id: ObjectId | str) -> T:
         if isinstance(doc_id, str):
-            doc = ObjectId(doc_id)
+            doc_id = ObjectId(doc_id)
 
         doc = await self.collection.find_one({"_id": doc_id})
 
@@ -64,9 +64,8 @@ class BaseRepository(Generic[T], ABC):
     async def _create_indexes(self) -> None:
         if self._initialized:
             return
-            
+
         if self.indexes:
             await self.collection.create_indexes(self.indexes)
-            
-        self._initialized = True
 
+        self._initialized = True
