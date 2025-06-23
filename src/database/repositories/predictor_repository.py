@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from pymongo import ASCENDING, IndexModel
@@ -35,8 +34,8 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
     async def find_predictor(
         self, prediction_type: str, predictor_version: int
-    ) -> PredictorDocument:
-        """Find  predictors by source name"""
+    ) -> PredictorDocument | None:
+        """Find predictor by source name and version"""
         filters: dict[str, Any] = {}
 
         filters["prediction_type"] = prediction_type
@@ -45,9 +44,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         doc = await self.collection.find_one(filters)
 
         if not doc:
-            raise ValueError(
-                f"Predictor with name {prediction_type} and version {predictor_version} not found"
-            )
+            return None
 
         return self._to_model(doc)
 
@@ -66,21 +63,20 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         return predictor
 
     async def create_predictor(
-        self,
-        prediction_type: str,
-        predictor_weights_path: str | Path,
+        self, prediction_type: str, predictor_version: int
     ) -> PredictorDocument:
         now = datetime.now(timezone.utc)
 
-        if isinstance(predictor_weights_path, str):
-            predictor_weights_path = Path(predictor_weights_path)
-
         max_version = await self.get_max_version(prediction_type)
+
+        if predictor_version <= max_version:
+            raise ValueError(
+                f"Cannot decrease version number for {prediction_type}: current max version is {max_version}, trying to create version {predictor_version}"
+            )
 
         predictor = PredictorDocument(
             prediction_type=prediction_type,
-            predictor_version=max_version + 1,
-            predictor_weights_path=predictor_weights_path,
+            predictor_version=predictor_version,
             created_at=now,
             updated_at=now,
         )

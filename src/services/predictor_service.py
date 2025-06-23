@@ -1,261 +1,75 @@
-# TODO: update to have only one predictor per instance
-# In the case of A/B deployment, just create another instance
-# -> makes it easier when deploying a total new type of model for the same task
-# -> also easier to manage
-import asyncio
-import time
-from abc import ABC, abstractmethod
+import shutil
 from pathlib import Path
-from typing import Any, Self
 
 from bson import ObjectId
 
-from src.core.logger import Logger
-from src.database.repositories.models.predictor_repository_models import (
-    PredictorDocument,
-)
+from src.core.settings import Settings
 from src.database.repositories.predictor_repository import PredictorRepository
-from src.events.event_bus import EventBus
-from src.events.event_types import MetricsEvent
-from src.services.deployment_service import DeploymentService
 from src.services.mappers.predictor_mapper import db_to_domain_predictor
-from src.services.models.predictor_models import Prediction, Predictor, PredictorMetrics
+from src.services.models.predictor_models import Predictor
 
 
-class PredictorService(ABC):
-    """
-    Abstract base class for predictor services that manage machine learning model lifecycle and execution.
-
-    This service provides a standardized interface for loading, managing, and executing predictions
-    with different versions of predictors. It handles metrics collection, event publishing, and
-    maintains active predictor instances with automatic performance monitoring.
-
-    The service integrates with a repository pattern for data persistence and an event bus
-    for publishing metrics and monitoring events during predictor operations.
-
-    Attributes:
-        predictor_repository (PredictorRepository): Repository for predictor data operations
-        event_bus (EventBus): Event bus for publishing metrics and monitoring events
-        active_predictors (dict[int, Predictor]): Dictionary mapping predictor versions to active predictor instances
-
-    Abstract Properties:
-        prediction_type (str): Unique identifier name for the predictor type
-
-    Abstract Methods:
-        _forward(predictor_input: Any) -> Prediction: Execute prediction logic for given input
-        _load_predictor(path: Path, predictor_version: int) -> None: Load predictor model from specified path
-    """
-
-    @property
-    @abstractmethod
-    def prediction_type(self) -> str: ...
-
-    @abstractmethod
-    def _forward(self, predictor_input: Any) -> Prediction: ...
-
-    @abstractmethod
-    def _load_predictor(self, path: Path, predictor_version: int) -> None: ...
-
-    @abstractmethod
-    def _unload_load_predictor(self, path: Path, predictor_version: int) -> None: ...
-
-    def tags(self, predictor_version: int) -> dict[str, str]:
-        return {
-            "prediction_type": self.prediction_type,
-            "predictor_version": str(predictor_version),
-        }
-
+class PredictorService:
     def __init__(
-        self,
-        predictor_repository: PredictorRepository,
-        deployment_service: DeploymentService,
-        event_bus: EventBus,
-        logger: Logger,
+        self, settings: Settings, predictor_repository: PredictorRepository
     ) -> None:
+        self.settings = settings
         self.predictor_repository = predictor_repository
-        self.deployment_service = deployment_service
-        self.event_bus = event_bus
-        self.logger = logger
 
-        self._active_predictors: dict[int, Predictor] = {}
+    async def find_predictor_by_id(self, predictor_id: ObjectId | str) -> Predictor:
+        if isinstance(predictor_id, str):
+            predictor_id = ObjectId(predictor_id)
 
-        self._initialized = False
-
-        self._active_predictors_lock = asyncio.Lock()
-
-    def _ensure_initialized(self) -> None:
-        if not self._initialized:
-            raise RuntimeError(
-                f"{self.__class__.__name__} not initialized. "
-                "Call initialize() or use create() factory method."
-            )
-
-    async def _get_active_predictors(self) -> dict[int, Predictor]:
-        async with self._active_predictors_lock:
-            return self._active_predictors.copy()
-
-    async def _update_active_predictors(self) -> None:
-        deployment_domain = await self.deployment_service.find_deployment_by_name(
-            self.prediction_type
+        predictor_document = await self.predictor_repository.find_by_id(
+            doc_id=predictor_id
         )
 
-        predictors: list[PredictorDocument] = []
+        return db_to_domain_predictor(predictor_document)
 
-        for active_predictor in deployment_domain.active_deployments:
-            predictors.append(
-                await self.predictor_repository.find_by_id(
-                    doc_id=active_predictor.predictor_id
-                )
+    async def find_predictor_by_type_and_version(
+        self, prediction_type: str, predictor_version: int
+    ) -> Predictor | None:
+        predictor_document = await self.predictor_repository.find_predictor(
+            prediction_type=prediction_type, predictor_version=predictor_version
+        )
+
+        if predictor_document is None:
+            return None
+
+        return db_to_domain_predictor(predictor_document)
+
+    def get_predictor_weights_path(self, predictor_id: ObjectId | str) -> Path:
+        if isinstance(predictor_id, ObjectId):
+            predictor_id = str(predictor_id)
+
+        return self.settings.WEIGHTS_PATH.joinpath(predictor_id)
+
+    def copy_weights(
+        self, predictor_id: ObjectId, predictor_weights_path: Path
+    ) -> None:
+        destination_path = self.get_predictor_weights_path(predictor_id)
+
+        if predictor_weights_path.is_file():
+            destination_path.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(predictor_weights_path, destination_path)
+        elif predictor_weights_path.is_dir():
+            shutil.copytree(
+                predictor_weights_path, destination_path, dirs_exist_ok=True
             )
 
-        domain_predictors = [
-            db_to_domain_predictor(predictor) for predictor in predictors
-        ]
-
-        async with self._active_predictors_lock:
-            self._active_predictors = {
-                domain_predictor.predictor_version: domain_predictor
-                for domain_predictor in domain_predictors
-            }
-
-    async def _get_predictor(self, predictor_version: int) -> Predictor | None:
-        async with self._active_predictors_lock:
-            return self._active_predictors.get(predictor_version)
-
-    async def _get_predictor_by_id(self, predictor_id: ObjectId) -> Predictor | None:
-        async with self._active_predictors_lock:
-            for predictor in self._active_predictors.values():
-                if predictor.id == predictor_id:
-                    return predictor
-        return None
-
-    async def initialize(self) -> None:
-        if self._initialized:
-            return
-
-        try:
-            await self._update_active_predictors()
-            self._initialized = True
-
-        except Exception as e:
-            self.logger.error(f"Failed to initialize {self.__class__.__name__}: {e}")
-            raise
-
-    @classmethod
-    async def create(
-        cls,
-        predictor_repository: PredictorRepository,
-        deployment_service: DeploymentService,
-        event_bus: EventBus,
-        logger: Logger,
-    ) -> Self:
-        instance = cls(predictor_repository, deployment_service, event_bus, logger)
-        await instance.initialize()
-        return instance
-
-    async def load_predictor(self, path: Path, predictor_version: int) -> None:
-        self._ensure_initialized()
-
-        if not path.exists():
-            raise ValueError(f"The path {path} does not exist: cannot load predictor")
-
-        start_time = time.perf_counter()
-
-        try:
-            self._load_predictor(path, predictor_version)
-        except Exception as exc:
-            self.event_bus.publish(
-                MetricsEvent(
-                    metric_name=PredictorMetrics.PREDICTOR_LOADING_ERROR,
-                    metric_value=1,
-                    tags=self.tags(predictor_version),
-                )
-            )
+    async def register_predictor(
+        self, predictor_weights_path: Path, prediction_type: str, predictor_version: int
+    ) -> Predictor:
+        if not predictor_weights_path.exists():
             raise ValueError(
-                f"Failed to load predictor {self.prediction_type}.{predictor_version}: {exc}"
+                f"The weights path {predictor_weights_path} does not exist"
             )
-
-        end_time = time.perf_counter()
-
-        latency = end_time - start_time
-
-        self.event_bus.publish(
-            MetricsEvent(
-                metric_name=PredictorMetrics.PREDICTOR_LOADING_LATENCY,
-                metric_value=latency,
-                tags=self.tags(predictor_version),
-            )
+        predictor_document = await self.predictor_repository.create_predictor(
+            prediction_type, predictor_version
         )
 
-    async def forward(
-        self, predictor_input: Any, predictor_version: int | None = None
-    ) -> Any:
-        self._ensure_initialized()
+        predictor_domain = db_to_domain_predictor(predictor_document)
 
-        if predictor_version is None:
-            selected_predictor_id = (
-                await self.deployment_service.select_predictor_randomly(
-                    self.prediction_type
-                )
-            )
-            predictor = await self._get_predictor_by_id(selected_predictor_id)
+        self.copy_weights(predictor_domain.id, predictor_weights_path)
 
-            if predictor is None:
-                raise ValueError(
-                    f"Selected predictor {selected_predictor_id} not found in active predictors"
-                )
-
-            selected_version = predictor.predictor_version
-            self.logger.info(
-                f"A/B testing selected predictor ID: {selected_predictor_id}, version: {selected_version}"
-            )
-        else:
-            predictor = await self._get_predictor(predictor_version)
-
-            if predictor is None:
-                raise ValueError(
-                    f"The predictor {self.prediction_type}.{predictor_version} is not active / does not exist"
-                )
-
-        if not predictor.loaded:
-            await self.load_predictor(
-                predictor.predictor_weights_path, predictor.predictor_version
-            )
-
-        start_time = time.perf_counter()
-
-        try:
-            result = self._forward(predictor_input)
-            end_time = time.perf_counter()
-            latency = end_time - start_time
-
-            self.event_bus.publish(
-                MetricsEvent(
-                    metric_name=PredictorMetrics.PREDICTOR_LATENCY,
-                    metric_value=latency,
-                    tags=self.tags(predictor.predictor_version),
-                )
-            )
-
-            self.event_bus.publish(
-                MetricsEvent(
-                    metric_name=PredictorMetrics.PREDICTOR_PRICE,
-                    metric_value=result.price,
-                    tags=self.tags(predictor.predictor_version),
-                )
-            )
-
-            return result
-
-        except Exception:
-            end_time = time.perf_counter()
-            latency = end_time - start_time
-
-            self.event_bus.publish(
-                MetricsEvent(
-                    metric_name=PredictorMetrics.PREDICTOR_ERROR,
-                    metric_value=1,
-                    tags=self.tags(predictor.predictor_version),
-                )
-            )
-            raise
+        return predictor_domain

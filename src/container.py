@@ -14,6 +14,7 @@ from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.metrics_handler import MetricsHandler
 from src.services.deployment_service import DeploymentService
+from src.services.predictor_service import PredictorService
 
 
 class Container(containers.DeclarativeContainer):
@@ -59,3 +60,8 @@ class Container(containers.DeclarativeContainer):
     deployment_service = providers.Singleton(
         DeploymentService, deployment_repository=deployment_repository
     )
+    predictor_service = providers.Singleton(
+        PredictorService, settings=settings, predictor_repository=predictor_repository
+    )
+
+    # Predictors

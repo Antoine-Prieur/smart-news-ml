@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 from bson import ObjectId
@@ -12,12 +11,15 @@ class PredictorMetrics(Enum, str):
     PREDICTOR_PRICE = "predictor_price"
     PREDICTOR_ERROR = "predictor_error"
     PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
+    PREDICTOR_UNLOADING_LATENCY = "predictor_unloading_error"
     PREDICTOR_LOADING_ERROR = "predictor_loading_error"
+    PREDICTOR_UNLOADING_ERROR = "predictor_unloading_error"
 
 
 @dataclass
 class Prediction:
-    result: Any
+    prediction_value: Any
+    prediction_confidence: float | None
     price: float
 
 
@@ -28,7 +30,5 @@ class Predictor:
     id: ObjectId
     prediction_type: str
     predictor_version: int
-    predictor_weights_path: Path
-    loaded: bool
     created_at: datetime
     updated_at: datetime
