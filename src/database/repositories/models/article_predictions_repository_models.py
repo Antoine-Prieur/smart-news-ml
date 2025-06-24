@@ -14,18 +14,19 @@ class ArticlePredictionsDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     article_id: ObjectId
     prediction_type: str
-    selected_prediction: ObjectId
-    predictions: dict[ObjectId, PredictionDocument] = Field(
-        default_factory=dict[ObjectId, PredictionDocument]
+    selected_predictor_id: ObjectId
+    selected_prediction: PredictionDocument
+    predictions: dict[str, PredictionDocument] = Field(
+        default_factory=dict[str, PredictionDocument]
     )
     created_at: datetime
     updated_at: datetime
 
     @model_validator(mode="after")
     def validate_selected_prediction(self) -> Self:
-        if self.selected_prediction not in self.predictions:
+        if str(self.selected_predictor_id) not in self.predictions:
             raise ValueError(
-                f"Selected prediction {self.selected_prediction} should be a valid ObjectId from predictions"
+                f"Selected prediction {self.selected_predictor_id} should be a valid ObjectId from predictions"
             )
 
         return self

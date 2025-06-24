@@ -14,7 +14,7 @@ services:
       - mongodb_config:/data/configdb
       - ./mongo-init:/docker-entrypoint-initdb.d:ro
     networks:
-      - mongodb_network
+      - app_network
 
   mongo-express:
     image: mongo-express:1.0.0
@@ -32,12 +32,36 @@ services:
     ports:
       - "8081:8081"
     networks:
-      - mongodb_network
+      - app_network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    command: redis-server --appendonly yes
+
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: redis-insight
+    restart: unless-stopped
+    depends_on:
+      - redis
+    ports:
+      - "5540:5540"
+    networks:
+      - app_network
 
 volumes:
   mongodb_data:
   mongodb_config:
+  redis_data:
 
 networks:
-  mongodb_network:
+  app_network:
     driver: bridge

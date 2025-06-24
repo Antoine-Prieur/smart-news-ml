@@ -1,58 +1,94 @@
 [
   {
-    "_id": "684c16227d407d8e81308570",
+    "_id": {
+      "$oid": "684c16227d407d8e81308570"
+    },
     "prediction_type": "sentiment_analysis",
     "active_deployments": [
       {
-        "predictor_id": "684c16227d407d8e81308560",
-        "traffic_percentage": 70.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308560"
+        },
+        "traffic_percentage": 70
       },
       {
-        "predictor_id": "684c16227d407d8e81308561",
-        "traffic_percentage": 30.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308561"
+        },
+        "traffic_percentage": 30
       }
     ],
-    "created_at": "2025-06-10T14:35:00.000000000Z",
-    "updated_at": "2025-06-13T12:20:15.000000000Z"
+    "created_at": {
+      "$date": "2025-06-10T14:35:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2025-06-13T12:20:15.000Z"
+    }
   },
   {
-    "_id": "684c16227d407d8e81308571",
+    "_id": {
+      "$oid": "684c16227d407d8e81308571"
+    },
     "prediction_type": "clustering",
     "active_deployments": [
       {
-        "predictor_id": "684c16227d407d8e81308563",
-        "traffic_percentage": 100.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308563"
+        },
+        "traffic_percentage": 100
       }
     ],
-    "created_at": "2025-06-09T11:25:00.000000000Z",
-    "updated_at": "2025-06-09T11:25:00.000000000Z"
+    "created_at": {
+      "$date": "2025-06-09T11:25:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2025-06-09T11:25:00.000Z"
+    }
   },
   {
-    "_id": "684c16227d407d8e81308572",
+    "_id": {
+      "$oid": "684c16227d407d8e81308572"
+    },
     "prediction_type": "anomaly_detection",
     "active_deployments": [
       {
-        "predictor_id": "684c16227d407d8e81308565",
-        "traffic_percentage": 100.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308565"
+        },
+        "traffic_percentage": 100
       }
     ],
-    "created_at": "2025-06-08T08:50:00.000000000Z",
-    "updated_at": "2025-06-08T08:50:00.000000000Z"
+    "created_at": {
+      "$date": "2025-06-08T08:50:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2025-06-08T08:50:00.000Z"
+    }
   },
   {
-    "_id": "684c16227d407d8e81308573",
+    "_id": {
+      "$oid": "684c16227d407d8e81308573"
+    },
     "prediction_type": "text_classification",
     "active_deployments": [
       {
-        "predictor_id": "684c16227d407d8e81308566",
-        "traffic_percentage": 40.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308566"
+        },
+        "traffic_percentage": 40
       },
       {
-        "predictor_id": "684c16227d407d8e81308567",
-        "traffic_percentage": 60.0
+        "predictor_id": {
+          "$oid": "684c16227d407d8e81308567"
+        },
+        "traffic_percentage": 60
       }
     ],
-    "created_at": "2025-06-07T15:35:00.000000000Z",
-    "updated_at": "2025-06-12T14:10:30.000000000Z"
+    "created_at": {
+      "$date": "2025-06-07T15:35:00.000Z"
+    },
+    "updated_at": {
+      "$date": "2025-06-12T14:10:30.000Z"
+    }
   }
 ]

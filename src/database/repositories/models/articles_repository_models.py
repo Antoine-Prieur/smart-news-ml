@@ -17,7 +17,7 @@ class ArticleDocument(BaseModel):
     description: str | None = None
     url: str | None = None
     url_to_image: str | None = None
-    published_at: str | None = None
+    published_at: datetime | None = None
     content: str | None = None
     created_at: datetime
     updated_at: datetime

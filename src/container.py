@@ -15,6 +15,9 @@ from src.events.event_bus import EventBus
 from src.events.handlers.metrics_handler import MetricsHandler
 from src.services.deployment_service import DeploymentService
 from src.services.predictor_service import PredictorService
+from src.services.predictors.sentiment_analysis_predictor_v1 import (
+    SentimentAnalysisPredictorV1,
+)
 
 
 class Container(containers.DeclarativeContainer):
@@ -65,3 +68,9 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Predictors
+    sentiment_analysis_predictor_v1 = providers.Singleton(
+        SentimentAnalysisPredictorV1,
+        predictor_service=predictor_service,
+        event_bus=event_bus,
+        logger=logger,
+    )

@@ -6,7 +6,7 @@ from typing import Any
 from bson import ObjectId
 
 
-class PredictorMetrics(Enum, str):
+class PredictorMetrics(str, Enum):
     PREDICTOR_LATENCY = "predictor_latency"
     PREDICTOR_PRICE = "predictor_price"
     PREDICTOR_ERROR = "predictor_error"
