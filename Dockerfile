@@ -3,6 +3,7 @@ FROM python:3.13-slim as builder
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+	curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
