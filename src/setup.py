@@ -2,6 +2,7 @@ from dependency_injector.wiring import Provide, inject
 
 from src.container import Container
 from src.core.logger import Logger
+from src.core.settings import Settings
 from src.database.client import MongoClient
 from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
@@ -123,6 +124,22 @@ class MLPlatformSetup:
             raise
 
     @inject
+    async def _setup_volumes(
+        self,
+        settings: Settings = Provide[Container.settings],
+        logger: Logger = Provide[Container.logger],
+    ) -> None:
+        """Initialize all volumes"""
+        try:
+            logger.info("Application volumes initialized successfully")
+
+            settings.WEIGHTS_PATH.mkdir(parents=True, exist_ok=True)
+
+        except Exception as e:
+            logger.error(f"Failed to initialize volumes: {e}")
+            raise
+
+    @inject
     async def cleanup_resources(
         self,
         mongo_client: MongoClient = Provide[Container.mongo_client],
@@ -151,6 +168,7 @@ class MLPlatformSetup:
             await self._setup_event_system()
             await self._setup_services()
             await self._setup_predictors()
+            await self._setup_volumes()
 
             print("🚀 ML Platform setup completed successfully!")
             print("Platform is ready to serve requests...")
