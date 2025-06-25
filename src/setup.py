@@ -163,12 +163,12 @@ class MLPlatformSetup:
         try:
             self.container.wire(modules=[__name__, "src.events.handlers"])
 
+            await self._setup_volumes()
             await self._setup_database()
             await self._setup_repositories()
             await self._setup_event_system()
             await self._setup_services()
             await self._setup_predictors()
-            await self._setup_volumes()
 
             print("🚀 ML Platform setup completed successfully!")
             print("Platform is ready to serve requests...")
