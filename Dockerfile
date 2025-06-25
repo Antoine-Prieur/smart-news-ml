@@ -14,7 +14,7 @@ WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
 
-RUN poetry install --only=main && rm -rf $POETRY_CACHE_DIR
+RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 
 FROM python:3.13-slim as runtime
 
