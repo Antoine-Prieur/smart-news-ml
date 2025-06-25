@@ -29,6 +29,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
 RUN mkdir -p /app/data/weights && chown -R appuser:appuser /app/data
+RUN mkdir -p /home/appuser && chown -R appuser:appuser /home/appuser
 
 COPY src/ ./src/
 
