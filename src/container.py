@@ -1,3 +1,4 @@
+import redis.asyncio as redis
 from dependency_injector import containers, providers
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -13,11 +14,12 @@ from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.metrics_handler import MetricsHandler
-from src.services.deployment_service import DeploymentService
-from src.services.predictor_service import PredictorService
-from src.services.predictors.sentiment_analysis_predictor_v1 import (
+from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
+from src.services.article_service import ArticleService
+from src.services.deployment_service import DeploymentService
+from src.services.predictor_service import PredictorService
 
 
 class Container(containers.DeclarativeContainer):
@@ -67,10 +69,25 @@ class Container(containers.DeclarativeContainer):
         PredictorService, settings=settings, predictor_repository=predictor_repository
     )
 
+    # Redis
+    redis_client = providers.Singleton(
+        redis.from_url,  # type: ignore
+        url=settings.provided.REDIS_URL,
+        decode_responses=False,
+    )
+
     # Predictors
     sentiment_analysis_predictor_v1 = providers.Singleton(
         SentimentAnalysisPredictorV1,
         predictor_service=predictor_service,
         event_bus=event_bus,
         logger=logger,
+    )
+
+    # Services which depend on predictors
+    article_service = providers.Singleton(
+        ArticleService,
+        logger=logger,
+        sentiment_predictor=sentiment_analysis_predictor_v1,
+        article_predictions_repository=article_predictions_repository,
     )

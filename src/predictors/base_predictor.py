@@ -2,7 +2,7 @@ import asyncio
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 from src.core.logger import Logger
 from src.events.event_bus import EventBus
@@ -11,7 +11,7 @@ from src.services.models.predictor_models import Prediction, Predictor, Predicto
 from src.services.predictor_service import PredictorService
 
 
-class BasePredictorService(ABC):
+class BasePredictor(ABC):
     @property
     @abstractmethod
     def prediction_type(self) -> str: ...
@@ -32,12 +32,6 @@ class BasePredictorService(ABC):
     @abstractmethod
     async def _unload_predictor(self) -> None: ...
 
-    def tags(self, predictor_version: int) -> dict[str, str]:
-        return {
-            "prediction_type": self.prediction_type,
-            "predictor_version": str(predictor_version),
-        }
-
     def __init__(
         self,
         predictor_service: PredictorService,
@@ -50,7 +44,7 @@ class BasePredictorService(ABC):
 
         self._initialized = False
         self._loaded = False
-        self._predictor_weights_path: Path | None = None
+        self._predictor: Predictor | None = None
 
         self._init_lock = asyncio.Lock()
         self._load_lock = asyncio.Lock()
@@ -62,23 +56,16 @@ class BasePredictorService(ABC):
                 "Call initialize() or use create() factory method."
             )
 
-        if self._predictor_weights_path is None:
-            raise RuntimeError(
-                f"{self.__class__.__name__} initialization incomplete: weights path not set"
-            )
+        if self._predictor is None:
+            raise RuntimeError(f"{self.__class__.__name__} initialization incomplete")
 
-    @classmethod
-    async def create(
-        cls,
-        predictor_service: PredictorService,
-        event_bus: EventBus,
-        logger: Logger,
-    ) -> Self:
-        instance = cls(predictor_service, event_bus, logger)
-        await instance.initialize()
-        return instance
+    def get_predictor(self) -> Predictor:
+        self._ensure_initialized()
 
-    async def initialize(self) -> None:
+        assert self._predictor is not None
+        return self._predictor
+
+    async def setup(self) -> None:
         async with self._init_lock:
             if self._initialized:
                 return
@@ -93,11 +80,12 @@ class BasePredictorService(ABC):
             )
 
             if predictor:
-                self._predictor_weights_path = (
+                self._predictor = predictor
+                predictor_weights_path = (
                     self.predictor_service.get_predictor_weights_path(predictor.id)
                 )
 
-                if self._predictor_weights_path.exists():
+                if predictor_weights_path.exists():
                     self._initialized = True
                     return
 
@@ -114,11 +102,18 @@ class BasePredictorService(ABC):
                     prediction_type=self.prediction_type,
                     predictor_version=self.predictor_version,
                 )
+                self._predictor = predictor
                 self._predictor_weights_path = (
                     self.predictor_service.get_predictor_weights_path(predictor.id)
                 )
 
             self._initialized = True
+
+    def tags(self, predictor_version: int) -> dict[str, str]:
+        return {
+            "prediction_type": self.prediction_type,
+            "predictor_version": str(predictor_version),
+        }
 
     async def _setup_predictor_weights(self, predictor: Predictor) -> None:
         try:

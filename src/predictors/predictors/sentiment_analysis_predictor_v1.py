@@ -7,12 +7,12 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.core.logger import Logger
 from src.events.event_bus import EventBus
-from src.services.base_predictor_service import BasePredictorService
+from src.predictors.base_predictor import BasePredictor
 from src.services.models.predictor_models import Prediction
 from src.services.predictor_service import PredictorService
 
 
-class SentimentAnalysisPredictorV1(BasePredictorService):
+class SentimentAnalysisPredictorV1(BasePredictor):
     MODEL_NAME = "nlptown/bert-base-multilingual-uncased-sentiment"
     SENTIMENT_MAP: dict[int, str] = {
         0: "negative",

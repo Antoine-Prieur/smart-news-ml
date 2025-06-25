@@ -12,6 +12,9 @@ from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.metrics_handler import MetricsHandler
+from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
+    SentimentAnalysisPredictorV1,
+)
 
 
 class MLPlatformSetup:
@@ -102,7 +105,25 @@ class MLPlatformSetup:
             raise
 
     @inject
-    async def _cleanup_resources(
+    async def _setup_predictors(
+        self,
+        sentiment_analysis_predictor_v1: SentimentAnalysisPredictorV1 = Provide[
+            Container.sentiment_analysis_predictor_v1
+        ],
+        logger: Logger = Provide[Container.logger],
+    ) -> None:
+        """Initialize all application predictors"""
+        try:
+            logger.info("Application predictors initialized successfully")
+
+            await sentiment_analysis_predictor_v1.setup()
+
+        except Exception as e:
+            logger.error(f"Failed to initialize predictors: {e}")
+            raise
+
+    @inject
+    async def cleanup_resources(
         self,
         mongo_client: MongoClient = Provide[Container.mongo_client],
         event_bus: EventBus = Provide[Container.event_bus],
@@ -122,16 +143,6 @@ class MLPlatformSetup:
             logger.error(f"Error during resource cleanup: {e}")
 
     async def setup(self) -> None:
-        """
-        Complete platform setup sequence.
-
-        Initializes all components in the correct dependency order:
-        1. Dependency injection container and wiring
-        2. Database connection and testing
-        3. Repository initialization and index creation
-        4. Event system setup and handler registration
-        5. Service initialization
-        """
         try:
             self.container.wire(modules=[__name__, "src.events.handlers"])
 
@@ -139,11 +150,12 @@ class MLPlatformSetup:
             await self._setup_repositories()
             await self._setup_event_system()
             await self._setup_services()
+            await self._setup_predictors()
 
             print("🚀 ML Platform setup completed successfully!")
             print("Platform is ready to serve requests...")
 
         except Exception as e:
             print(f"❌ Platform setup failed: {e}")
-            await self._cleanup_resources()
+            await self.cleanup_resources()
             raise

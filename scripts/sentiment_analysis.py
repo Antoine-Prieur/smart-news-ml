@@ -14,7 +14,7 @@ from src.database.repositories.articles_repository import ArticleRepository
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.metrics_handler import MetricsHandler
-from src.services.predictors.sentiment_analysis_predictor_v1 import (
+from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
 
@@ -60,7 +60,7 @@ class SentimentAnalysisTest:
             )
 
             logger.info("Initializing sentiment analysis predictor...")
-            await sentiment_predictor.initialize()
+            await sentiment_predictor.setup()
 
             logger.info("Running sentiment analysis prediction...")
             prediction_result = await sentiment_predictor.forward(input_text)
