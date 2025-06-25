@@ -17,6 +17,7 @@ dependencies = [
     "redis (>=6.2.0,<7.0.0)",
     "types-redis (>=4.6.0.20241004,<5.0.0.0)"
 ]
+package-mode = false
 
 
 [build-system]
