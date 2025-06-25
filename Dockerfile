@@ -5,16 +5,19 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir poetry
-
-ENV POETRY_VENV_IN_PROJECT=1
-ENV POETRY_CACHE_DIR=/opt/poetry-cache
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="/root/.local/bin:$PATH"
 
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
 
-RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
+RUN poetry self add poetry-plugin-export
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --without dev
+
+RUN python -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+RUN pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.13-slim as runtime
 
