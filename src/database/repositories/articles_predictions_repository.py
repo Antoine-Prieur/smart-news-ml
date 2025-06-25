@@ -102,7 +102,8 @@ class ArticlePredictionsRepository(BaseRepository[ArticlePredictionsDocument]):
         }
 
         if set_as_selected:
-            update_doc["$set"]["selected_prediction"] = str(predictor_id)
+            update_doc["$set"]["selected_prediction"] = prediction_doc.model_dump()
+            update_doc["$set"]["selected_predictor_id"] = predictor_id
 
         result = await self.collection.find_one_and_update(
             {"article_id": article_id, "prediction_type": prediction_type},

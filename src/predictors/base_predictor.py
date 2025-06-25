@@ -27,7 +27,7 @@ class BasePredictor(ABC):
     async def _download_predictor(self) -> Path: ...
 
     @abstractmethod
-    async def _load_predictor(self) -> None: ...
+    async def _load_predictor(self, predictor_weights_path: Path) -> None: ...
 
     @abstractmethod
     async def _unload_predictor(self) -> None: ...
@@ -103,9 +103,6 @@ class BasePredictor(ABC):
                     predictor_version=self.predictor_version,
                 )
                 self._predictor = predictor
-                self._predictor_weights_path = (
-                    self.predictor_service.get_predictor_weights_path(predictor.id)
-                )
 
             self._initialized = True
 
@@ -135,19 +132,20 @@ class BasePredictor(ABC):
                 )
                 return
 
-            assert (
-                self._predictor_weights_path is not None
-            ), "Predictor weights path should be set after initialization"
+            predictor = self.get_predictor()
+            predictor_weights_path = self.predictor_service.get_predictor_weights_path(
+                predictor.id
+            )
 
-            if not self._predictor_weights_path.exists():
+            if not predictor_weights_path.exists():
                 raise ValueError(
-                    f"The path {self._predictor_weights_path} does not exist: cannot load predictor"
+                    f"The path {predictor_weights_path} does not exist: cannot load predictor"
                 )
 
             start_time = time.perf_counter()
 
             try:
-                await self._load_predictor()
+                await self._load_predictor(predictor_weights_path)
             except Exception as exc:
                 self.event_bus.publish(
                     MetricsEvent(

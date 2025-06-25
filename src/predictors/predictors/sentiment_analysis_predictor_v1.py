@@ -65,19 +65,17 @@ class SentimentAnalysisPredictorV1(BasePredictor):
                 shutil.rmtree(temp_dir)
             raise
 
-    async def _load_predictor(self) -> None:
-        assert self._predictor_weights_path is not None
-
+    async def _load_predictor(self, predictor_weights_path: Path) -> None:
         self.logger.info(
-            f"Loading sentiment analysis model from {self._predictor_weights_path}"
+            f"Loading sentiment analysis model from {predictor_weights_path}"
         )
 
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(  # type: ignore
-                str(self._predictor_weights_path)
+                str(predictor_weights_path)
             )
             self.model = AutoModelForSequenceClassification.from_pretrained(  # type: ignore
-                str(self._predictor_weights_path)
+                str(predictor_weights_path)
             )
 
             self.model.eval()  # type: ignore

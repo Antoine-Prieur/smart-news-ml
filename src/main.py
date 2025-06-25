@@ -32,7 +32,6 @@ async def consume_articles_batch(
             messages: list[Any] = []
             start_time = asyncio.get_event_loop().time()
 
-            # Collect messages for batch
             while len(messages) < BATCH_SIZE:
                 remaining_time = BATCH_TIMEOUT - (
                     asyncio.get_event_loop().time() - start_time
@@ -40,18 +39,15 @@ async def consume_articles_batch(
                 if remaining_time <= 0:
                     break
 
-                # Wait for message with remaining timeout
-                # result = await redis_client.brpop(
-                #     QUEUE_NAME, timeout=int(remaining_time)
-                # )
-                result = await redis_client.lrange(QUEUE_NAME, 0, 0)
+                result = await redis_client.brpop(
+                    QUEUE_NAME, timeout=int(remaining_time)
+                )
                 if result:
                     _, message_data = result
                     message_json = json.loads(message_data.decode("utf-8"))
                     messages.append(message_json)
-                    break
                 else:
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(1)
                     break
 
             if messages:
