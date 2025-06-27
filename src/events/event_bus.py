@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Any
 
 from redis.asyncio import Redis
@@ -16,20 +17,17 @@ class EventBus:
 
     async def _handle_message(self, raw_message: Any) -> None:
         try:
-            # Step 1: Decode the raw message
             if isinstance(raw_message, bytes):
                 message_str = raw_message.decode("utf-8")
             else:
                 message_str = str(raw_message)
 
-            # Step 2: Parse JSON
             try:
                 message_data = json.loads(message_str)
             except json.JSONDecodeError as e:
                 self.logger.error(f"EventBus: Failed to decode JSON from message: {e}")
                 return
 
-            # Step 3: Parse into BaseEvent using Pydantic
             try:
                 event = BaseEvent(**message_data)
             except ValidationError as e:
