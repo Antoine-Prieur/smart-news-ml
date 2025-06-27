@@ -30,6 +30,6 @@ docker-compose up -d
 
 ## 🔗 Related Projects
 
-- [News Crawler](https://github.com/Antoine-Prieur/smart-news-crawler): Rust-based news scraping using News API (Note: Used this project to learn Rust, so please be gentle with the code review!)
+- [News Crawler](https://github.com/Antoine-Prieur/smart-news-crawler): Rust-based news scraping using News API (Note: Used this project to learn Rust)
 - [Web API](https://github.com/Antoine-Prieur/smart-news-backend): RESTful API server for frontend integration (Also part of my Rust learning journey)
 - [Dashboard](https://github.com/Antoine-Prieur/smart-news-frontend): React-based analytics and monitoring interface (Built using a template with lots of vibe coding - frontend wasn't the focus here)
