@@ -11,7 +11,7 @@ class PredictorMetrics(str, Enum):
     PREDICTOR_PRICE = "predictor_price"
     PREDICTOR_ERROR = "predictor_error"
     PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
-    PREDICTOR_UNLOADING_LATENCY = "predictor_unloading_error"
+    PREDICTOR_UNLOADING_LATENCY = "predictor_unloading_latency"
     PREDICTOR_LOADING_ERROR = "predictor_loading_error"
     PREDICTOR_UNLOADING_ERROR = "predictor_unloading_error"
 

@@ -37,7 +37,7 @@ class EventBus:
             except asyncio.QueueEmpty:
                 break
             except Exception as e:
-                print(f"EventBus: Error draining queue: {e}")
+                self.logger.error(f"EventBus: Error draining queue: {e}")
 
     async def _safe_handle(self, handler: EventHandler, event_data: BaseEvent):
         try:
