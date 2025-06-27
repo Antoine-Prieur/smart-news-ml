@@ -9,7 +9,6 @@ from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
 )
 from src.database.repositories.articles_repository import ArticleRepository
-from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
@@ -18,7 +17,7 @@ from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
 from src.services.article_service import ArticleService
-from src.services.deployment_service import DeploymentService
+from src.services.metrics_service import MetricsService
 from src.services.predictor_service import PredictorService
 
 
@@ -34,15 +33,12 @@ class Container(containers.DeclarativeContainer):
     )
 
     mongo_client = providers.Singleton(
-        MongoClient, client=motor_client, settings=settings
+        MongoClient, client=motor_client, settings=settings, logger=logger
     )
 
     # Repositories
     articles_repository = providers.Singleton(
         ArticleRepository, mongo_client=mongo_client
-    )
-    deployment_repository = providers.Singleton(
-        DeploymentRepository, mongo_client=mongo_client
     )
     metrics_repository = providers.Singleton(
         MetricsRepository, mongo_client=mongo_client
@@ -62,11 +58,11 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Services
-    deployment_service = providers.Singleton(
-        DeploymentService, deployment_repository=deployment_repository
-    )
     predictor_service = providers.Singleton(
         PredictorService, settings=settings, predictor_repository=predictor_repository
+    )
+    metrics_service = providers.Singleton(
+        MetricsService, metrics_repository=metrics_repository
     )
 
     # Redis

@@ -8,7 +8,6 @@ from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
 )
 from src.database.repositories.articles_repository import ArticleRepository
-from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
@@ -44,9 +43,6 @@ class MLPlatformSetup:
     async def _setup_repositories(
         self,
         articles_repository: ArticleRepository = Provide[Container.articles_repository],
-        deployment_repository: DeploymentRepository = Provide[
-            Container.deployment_repository
-        ],
         metrics_repository: MetricsRepository = Provide[Container.metrics_repository],
         predictor_repository: PredictorRepository = Provide[
             Container.predictor_repository
@@ -59,7 +55,6 @@ class MLPlatformSetup:
         """Initialize all repositories and create database indexes"""
         repositories = [
             ("Articles", articles_repository),
-            ("Deployment", deployment_repository),
             ("Metrics", metrics_repository),
             ("Predictor", predictor_repository),
             ("Article Predictions", article_predictions_repository),

@@ -4,7 +4,7 @@ from bson import ObjectId
 from pydantic import BaseModel, Field
 
 
-class MetricsDocument(BaseModel):
+class MetricDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     metric_name: str
     metric_value: float

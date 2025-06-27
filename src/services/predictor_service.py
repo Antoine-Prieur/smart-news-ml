@@ -2,6 +2,7 @@ import shutil
 from pathlib import Path
 
 from bson import ObjectId
+from motor.core import AgnosticClientSession
 
 from src.core.settings import Settings
 from src.database.repositories.predictor_repository import PredictorRepository
@@ -73,3 +74,92 @@ class PredictorService:
         self.copy_weights(predictor_domain.id, predictor_weights_path)
 
         return predictor_domain
+
+    # A/B testing
+    def _redistribute_traffic(
+        self, distributions: dict[ObjectId, float], traffic_to_redistribute: float
+    ) -> dict[ObjectId, float]:
+        if not distributions or traffic_to_redistribute == 0:
+            return distributions.copy()
+
+        sorted_items = sorted(distributions.items(), key=lambda x: x[1])
+        result: dict[ObjectId, float] = {}
+        remaining_traffic = traffic_to_redistribute
+        remaining_predictors = len(sorted_items)
+
+        for predictor_id, current_traffic in sorted_items:
+            avg_adjustment = remaining_traffic / remaining_predictors
+
+            if current_traffic >= avg_adjustment:
+                result[predictor_id] = current_traffic - avg_adjustment
+                remaining_traffic -= avg_adjustment
+            else:
+                result[predictor_id] = 0
+                remaining_traffic -= current_traffic
+
+            remaining_predictors -= 1
+
+        return result
+
+    def _calculate_traffic_distribution(
+        self,
+        current_distributions: dict[ObjectId, float],
+        target_predictor_id: ObjectId,
+        target_traffic: float,
+    ) -> dict[ObjectId, float]:
+        if target_traffic < 0:
+            raise ValueError(f"Traffic must be >= 0%. Got: {target_traffic}")
+        if target_traffic > 100:
+            raise ValueError(f"Traffic cannot exceed 100%. Got: {target_traffic}")
+
+        if target_predictor_id not in current_distributions:
+            return current_distributions.copy()
+
+        old_target_traffic = current_distributions[target_predictor_id]
+        traffic_delta = target_traffic - old_target_traffic
+
+        other_predictors = {
+            pid: traffic
+            for pid, traffic in current_distributions.items()
+            if pid != target_predictor_id
+        }
+
+        if not other_predictors:
+            return {target_predictor_id: target_traffic}
+
+        adjusted_others = self._redistribute_traffic(other_predictors, -traffic_delta)
+
+        return {target_predictor_id: target_traffic, **adjusted_others}
+
+    async def adjust_traffic_distribution(
+        self,
+        prediction_type: str,
+        target_predictor_id: ObjectId,
+        target_traffic: float,
+    ) -> None:
+        async def transaction(session: AgnosticClientSession) -> None:
+            predictor_documents = (
+                await self.predictor_repository.find_predictors_by_name(
+                    prediction_type, session=session
+                )
+            )
+            predictors: list[Predictor] = [
+                db_to_domain_predictor(predictor_document)
+                for predictor_document in predictor_documents
+            ]
+            current_distributions = {p.id: p.traffic_percentage for p in predictors}
+
+            if not predictors or target_predictor_id not in current_distributions:
+                raise ValueError(f"Target predictor {target_predictor_id} not found")
+
+            new_distributions = self._calculate_traffic_distribution(
+                current_distributions, target_predictor_id, target_traffic
+            )
+
+            for predictor in predictors:
+                if predictor.id in new_distributions:
+                    await self.predictor_repository.update_traffic_percentage(
+                        predictor.id, new_distributions[predictor.id], session=session
+                    )
+
+        await self.predictor_repository.start_transaction(transaction)
