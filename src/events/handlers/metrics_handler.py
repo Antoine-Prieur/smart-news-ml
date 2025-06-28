@@ -1,5 +1,15 @@
-from src.events.event_types import BaseEvent, EventType, MetricsEvent
+from typing import Any
+
+from pydantic import BaseModel
+
+from src.events.event_types import BaseEvent, EventType
 from src.services.metrics_service import MetricsService
+
+
+class MetricsEvent(BaseModel):
+    metric_name: str
+    metric_value: Any
+    tags: dict[str, str]
 
 
 class MetricsHandler:
@@ -11,9 +21,10 @@ class MetricsHandler:
         return [EventType.METRICS_EVENT]
 
     async def handle(self, event_data: BaseEvent) -> None:
-        if isinstance(event_data, MetricsEvent):
-            await self.metrics_service.create_metric(
-                event_data.metric_name, event_data.metric_value, event_data.tags
-            )
+        event_content = MetricsEvent.model_validate(event_data.content)
+
+        await self.metrics_service.create_metric(
+            event_content.metric_name, event_content.metric_value, event_content.tags
+        )
 
         return None
