@@ -1,7 +1,7 @@
 import asyncio
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Awaitable
 
 from pydantic import ValidationError
 from redis.asyncio import Redis
@@ -12,7 +12,6 @@ from src.events.event_types import BaseEvent, EventHandler, EventType
 
 @dataclass
 class QueueParams:
-    concurrent_calls: int
     batch_size: int
 
 
@@ -21,6 +20,8 @@ class EventBus:
         self._queues: dict[str, QueueParams] = {}
         self._handlers: dict[EventType, list[EventHandler]] = {}
         self._event_to_queue: dict[EventType, str] = {}
+
+        self._tasks: dict[str, asyncio.Task[Any]] = {}
 
         self._redis_client: Redis[Any] = redis
         self._running: bool = False
@@ -39,7 +40,26 @@ class EventBus:
         self._running = True
 
         for queue_name in self._queues.keys():
-            asyncio.create_task(self._start_event_queue(queue_name))
+            task = asyncio.create_task(self._start_event_queue(queue_name))
+            self._tasks[queue_name] = task
+
+    async def stop(self) -> None:
+        if not self._running:
+            self.logger.warning("EventBus: Already stopped")
+            return
+
+        self.logger.info("EventBus: Stopping...")
+        self._running = False
+
+        for task in self._tasks.values():
+            if not task.done():
+                task.cancel()
+
+        if self._tasks:
+            await asyncio.gather(*self._tasks.values(), return_exceptions=True)
+
+        self._tasks.clear()
+        self.logger.info("EventBus: Stopped")
 
     async def publish_async(self, event_data: BaseEvent) -> None:
         try:
@@ -58,15 +78,14 @@ class EventBus:
             raise
 
     def publish(self, event_data: BaseEvent) -> None:
-        """Synchronously publish an event (creates async task)."""
         asyncio.create_task(self.publish_async(event_data))
 
-    def register_queue(self, queue_name: str, queue_params: QueueParams) -> None:
+    def register_queue(self, queue_name: str, batch_size: int) -> None:
         if queue_name in self._queues:
             self.logger.warning(f"EventBus: queue {queue_name} already registered")
             return
 
-        self._queues[queue_name] = queue_params
+        self._queues[queue_name] = QueueParams(batch_size=batch_size)
 
     def subscribe(self, queue_name: str, handler: EventHandler) -> None:
         event_types = handler.event_types
@@ -98,47 +117,48 @@ class EventBus:
             raise Exception(f"EventBus: Could not find queue named {queue_name}")
 
         queue_params = self._queues[queue_name]
-        semaphore = asyncio.Semaphore(queue_params.concurrent_calls)
 
-        async def process_event() -> None:
-            async with semaphore:
+        async def process_event_batch(event_batch: list[Any]) -> None:
+            base_events: list[BaseEvent] = []
+
+            for event_data in event_batch:
                 try:
-                    result = await self._redis_client.blpop([queue_name], timeout=1)
+                    message_data = json.loads(event_data)
 
-                    if result is None:
-                        return None
-
-                    _, event_data = result
-                    try:
-                        message_data = json.loads(event_data)
-
-                    except json.JSONDecodeError as e:
-                        self.logger.error(
-                            f"EventBus: Failed to decode JSON from message: {e}"
-                        )
-                        return
-
-                    try:
-                        event = BaseEvent.model_validate(message_data)
-
-                    except ValidationError as e:
-                        self.logger.error(
-                            f"EventBus: Failed to parse message into BaseEvent: {e}"
-                        )
-                        return
-
-                    await self._route_to_handlers(event)
-
-                except Exception as e:
+                except json.JSONDecodeError as e:
                     self.logger.error(
-                        f"EventBus: Unexpected error handling message: {e}"
+                        f"EventBus: Failed to decode JSON from message: {e}"
                     )
+                    continue
+
+                try:
+                    event = BaseEvent.model_validate(message_data)
+
+                except ValidationError as e:
+                    self.logger.error(
+                        f"EventBus: Failed to parse message into BaseEvent: {e}"
+                    )
+                    return
+
+                base_events.append(event)
+
+            try:
+                await self._route_to_handlers(base_events)
+            except Exception as e:
+                self.logger.error(f"EventBus: Unexpected error handling message: {e}")
 
         while self._running:
             try:
-                # TODO: implement real batch processing
-                tasks = [process_event() for _ in range(queue_params.batch_size)]
-                await asyncio.gather(*tasks, return_exceptions=True)
+                event_batch: list[Any] = []
+                for _ in range(queue_params.batch_size):
+                    result = await self._redis_client.blpop([queue_name], timeout=0.1)
+                    if result:
+                        event_batch.append(result[1])
+                    else:
+                        break
+
+                if event_batch:
+                    await process_event_batch(event_batch)
 
             except asyncio.CancelledError:
                 self.logger.warning(
@@ -149,23 +169,40 @@ class EventBus:
                 self.logger.error(
                     f"EventBus: Unexpected error in {queue_name} loop: {e}"
                 )
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(1)
 
-    async def _route_to_handlers(self, event_data: BaseEvent) -> None:
-        handlers = self._handlers.get(event_data.event_type, [])
-
-        if not handlers:
-            self.logger.debug(
-                f"EventBus: No handlers for event type {event_data.event_type}"
-            )
+    async def _route_to_handlers(self, events_data: list[BaseEvent]) -> None:
+        if not events_data:
             return
 
-        tasks = [self._handle_event(handler, event_data) for handler in handlers]
-        await asyncio.gather(*tasks, return_exceptions=True)
+        events_by_type: dict[EventType, list[BaseEvent]] = {}
+        for event in events_data:
+            if event.event_type not in events_by_type:
+                events_by_type[event.event_type] = []
+            events_by_type[event.event_type].append(event)
 
-    async def _handle_event(self, handler: EventHandler, event_data: BaseEvent) -> None:
+        tasks: list[Awaitable[Any]] = []
+
+        for event_type, events in events_by_type.items():
+            handlers = self._handlers.get(event_type, [])
+
+            if not handlers:
+                self.logger.debug(
+                    f"EventBus: No handlers for event type {event_type} ({len(events)} events)"
+                )
+                continue
+
+            for handler in handlers:
+                tasks.append(self._handle_events(handler, events))
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _handle_events(
+        self, handler: EventHandler, events_data: list[BaseEvent]
+    ) -> None:
         try:
-            await handler.handle(event_data)
+            await handler.handle(events_data)
         except Exception as e:
             self.logger.error(
                 f"EventBus: Handler {handler.__class__.__name__} failed: {e}"

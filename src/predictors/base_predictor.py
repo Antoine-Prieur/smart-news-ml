@@ -6,7 +6,7 @@ from typing import Any
 
 from src.core.logger import Logger
 from src.events.event_bus import EventBus
-from src.events.event_types import MetricsEvent
+from src.events.handlers.metrics_handler import MetricsEvent
 from src.services.models.predictor_models import Prediction, Predictor, PredictorMetrics
 from src.services.predictor_service import PredictorService
 
@@ -148,7 +148,7 @@ class BasePredictor(ABC):
                 await self._load_predictor(predictor_weights_path)
             except Exception as exc:
                 self.event_bus.publish(
-                    MetricsEvent(
+                    MetricsEvent.create_base_event(
                         metric_name=PredictorMetrics.PREDICTOR_LOADING_ERROR,
                         metric_value=1,
                         tags=self.tags(self.predictor_version),
@@ -163,7 +163,7 @@ class BasePredictor(ABC):
             latency = end_time - start_time
 
             self.event_bus.publish(
-                MetricsEvent(
+                MetricsEvent.create_base_event(
                     metric_name=PredictorMetrics.PREDICTOR_LOADING_LATENCY,
                     metric_value=latency,
                     tags=self.tags(self.predictor_version),
@@ -187,7 +187,7 @@ class BasePredictor(ABC):
                 await self._unload_predictor()
             except Exception as exc:
                 self.event_bus.publish(
-                    MetricsEvent(
+                    MetricsEvent.create_base_event(
                         metric_name=PredictorMetrics.PREDICTOR_UNLOADING_ERROR,
                         metric_value=1,
                         tags=self.tags(self.predictor_version),
@@ -202,7 +202,7 @@ class BasePredictor(ABC):
             latency = end_time - start_time
 
             self.event_bus.publish(
-                MetricsEvent(
+                MetricsEvent.create_base_event(
                     metric_name=PredictorMetrics.PREDICTOR_UNLOADING_LATENCY,
                     metric_value=latency,
                     tags=self.tags(self.predictor_version),
@@ -224,7 +224,7 @@ class BasePredictor(ABC):
             latency = end_time - start_time
 
             self.event_bus.publish(
-                MetricsEvent(
+                MetricsEvent.create_base_event(
                     metric_name=PredictorMetrics.PREDICTOR_LATENCY,
                     metric_value=latency,
                     tags=self.tags(self.predictor_version),
@@ -232,7 +232,7 @@ class BasePredictor(ABC):
             )
 
             self.event_bus.publish(
-                MetricsEvent(
+                MetricsEvent.create_base_event(
                     metric_name=PredictorMetrics.PREDICTOR_PRICE,
                     metric_value=result.price,
                     tags=self.tags(self.predictor_version),
@@ -246,7 +246,7 @@ class BasePredictor(ABC):
             latency = end_time - start_time
 
             self.event_bus.publish(
-                MetricsEvent(
+                MetricsEvent.create_base_event(
                     metric_name=PredictorMetrics.PREDICTOR_ERROR,
                     metric_value=1,
                     tags=self.tags(self.predictor_version),

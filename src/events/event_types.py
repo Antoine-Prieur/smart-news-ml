@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class EventType(Enum):
     METRICS_EVENT = "metrics_event"
+    ARTICLES_EVENT = "articles_event"
 
 
 class BaseEvent(BaseModel):
@@ -24,4 +25,4 @@ class EventHandler(Protocol):
     @property
     def event_types(self) -> list[EventType]: ...
 
-    async def handle(self, event_data: BaseEvent) -> None: ...
+    async def handle(self, events_data: list[BaseEvent]) -> None: ...

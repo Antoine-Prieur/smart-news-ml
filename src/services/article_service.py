@@ -1,15 +1,15 @@
 import asyncio
-from typing import Any
 
 from src.core.logger import Logger
 from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
 )
+from src.events.handlers.articles_handler import ArticleEvent
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
 from src.services.mappers.articles_mapper import db_to_domain_article_predictions
-from src.services.models.article_models import ArticlePredictions, ArticleQueueMessage
+from src.services.models.article_models import ArticlePredictions
 
 
 class ArticleService:
@@ -26,11 +26,8 @@ class ArticleService:
         self.article_predictions_repository = article_predictions_repository
         self.concurrent_predictions = concurrent_predictions
 
-    def parse_message(self, raw_data: Any) -> ArticleQueueMessage:
-        return ArticleQueueMessage(**raw_data)
-
-    async def make_prediction_and_save(
-        self, article: ArticleQueueMessage
+    async def _make_prediction_and_save(
+        self, article: ArticleEvent
     ) -> ArticlePredictions:
         text_to_analyze = article.title or article.description or ""
         sentiment_prediction = await self.sentiment_predictor.forward(text_to_analyze)
@@ -48,19 +45,19 @@ class ArticleService:
 
         return db_to_domain_article_predictions(stored_prediction)
 
-    async def process_articles(self, messages: list[Any]) -> list[ArticlePredictions]:
-        articles = [self.parse_message(msg) for msg in messages]
-
+    async def process_articles(
+        self, articles: list[ArticleEvent]
+    ) -> list[ArticlePredictions]:
         await self.sentiment_predictor.load_predictor()
 
         try:
             semaphore = asyncio.Semaphore(self.concurrent_predictions)
 
             async def predict_with_semaphore(
-                article: ArticleQueueMessage,
+                article: ArticleEvent,
             ) -> ArticlePredictions:
                 async with semaphore:
-                    return await self.make_prediction_and_save(article)
+                    return await self._make_prediction_and_save(article)
 
             tasks = [predict_with_semaphore(article) for article in articles]
             predictions = await asyncio.gather(*tasks)
