@@ -13,12 +13,10 @@ from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.articles_handler import ArticlesHandler
-from src.events.handlers.metrics_handler import MetricsHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
 from src.services.article_service import ArticleService
-from src.services.metrics_service import MetricsService
 from src.services.predictor_service import PredictorService
 
 
@@ -56,9 +54,6 @@ class Container(containers.DeclarativeContainer):
     predictor_service = providers.Singleton(
         PredictorService, settings=settings, predictor_repository=predictor_repository
     )
-    metrics_service = providers.Singleton(
-        MetricsService, metrics_repository=metrics_repository
-    )
 
     # Event
     redis_client = providers.Singleton(
@@ -72,7 +67,7 @@ class Container(containers.DeclarativeContainer):
     sentiment_analysis_predictor_v1 = providers.Singleton(
         SentimentAnalysisPredictorV1,
         predictor_service=predictor_service,
-        event_bus=event_bus,
+        metrics_repository=metrics_repository,
         logger=logger,
     )
 
@@ -85,10 +80,6 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Handlers
-    metrics_handler = providers.Singleton(
-        MetricsHandler, metrics_repository=metrics_repository
-    )
-
     articles_handler = providers.Singleton(
         ArticlesHandler, articles_service=article_service
     )

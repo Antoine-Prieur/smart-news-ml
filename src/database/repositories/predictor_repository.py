@@ -127,7 +127,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
         return result[0]["max_version"]
 
-    async def find_predictors_by_name(
+    async def find_predictors_by_prediction_type(
         self,
         prediction_type: str,
         only_actives: bool = False,

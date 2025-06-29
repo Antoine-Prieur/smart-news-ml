@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from src.core.logger import Logger
-from src.events.event_bus import EventBus
-from src.events.handlers.metrics_handler import MetricsEvent
+from src.database.repositories.metrics_repository import MetricsRepository
 from src.services.models.predictor_models import Prediction, Predictor, PredictorMetrics
 from src.services.predictor_service import PredictorService
 
@@ -35,11 +34,11 @@ class BasePredictor(ABC):
     def __init__(
         self,
         predictor_service: PredictorService,
-        event_bus: EventBus,
+        metrics_repository: MetricsRepository,
         logger: Logger,
     ) -> None:
         self.predictor_service = predictor_service
-        self.event_bus = event_bus
+        self.metrics_repository = metrics_repository
         self.logger = logger
 
         self._initialized = False
@@ -106,11 +105,10 @@ class BasePredictor(ABC):
 
             self._initialized = True
 
-    def tags(self, predictor_version: int) -> dict[str, str]:
-        return {
-            "prediction_type": self.prediction_type,
-            "predictor_version": str(predictor_version),
-        }
+    def tags(self) -> dict[str, str]:
+        return self.predictor_service.build_tags(
+            self.prediction_type, self.predictor_version
+        )
 
     async def _setup_predictor_weights(self, predictor: Predictor) -> None:
         try:
@@ -147,13 +145,12 @@ class BasePredictor(ABC):
             try:
                 await self._load_predictor(predictor_weights_path)
             except Exception as exc:
-                self.event_bus.publish(
-                    MetricsEvent.create_base_event(
-                        metric_name=PredictorMetrics.PREDICTOR_LOADING_ERROR,
-                        metric_value=1,
-                        tags=self.tags(self.predictor_version),
-                    )
+                await self.metrics_repository.create_metric(
+                    metric_name=PredictorMetrics.PREDICTOR_LOADING_ERROR,
+                    metric_value=1,
+                    tags=self.tags(),
                 )
+
                 raise ValueError(
                     f"Failed to load predictor {self.prediction_type}.{self.predictor_version}: {exc}"
                 )
@@ -162,13 +159,12 @@ class BasePredictor(ABC):
 
             latency = end_time - start_time
 
-            self.event_bus.publish(
-                MetricsEvent.create_base_event(
-                    metric_name=PredictorMetrics.PREDICTOR_LOADING_LATENCY,
-                    metric_value=latency,
-                    tags=self.tags(self.predictor_version),
-                )
+            await self.metrics_repository.create_metric(
+                metric_name=PredictorMetrics.PREDICTOR_LOADING_LATENCY,
+                metric_value=latency,
+                tags=self.tags(),
             )
+
             self._loaded = True
 
     async def unload_predictor(self) -> None:
@@ -186,13 +182,12 @@ class BasePredictor(ABC):
             try:
                 await self._unload_predictor()
             except Exception as exc:
-                self.event_bus.publish(
-                    MetricsEvent.create_base_event(
-                        metric_name=PredictorMetrics.PREDICTOR_UNLOADING_ERROR,
-                        metric_value=1,
-                        tags=self.tags(self.predictor_version),
-                    )
+                await self.metrics_repository.create_metric(
+                    metric_name=PredictorMetrics.PREDICTOR_UNLOADING_ERROR,
+                    metric_value=1,
+                    tags=self.tags(),
                 )
+
                 raise ValueError(
                     f"Failed to unload predictor {self.prediction_type}.{self.predictor_version}: {exc}"
                 )
@@ -201,13 +196,12 @@ class BasePredictor(ABC):
 
             latency = end_time - start_time
 
-            self.event_bus.publish(
-                MetricsEvent.create_base_event(
-                    metric_name=PredictorMetrics.PREDICTOR_UNLOADING_LATENCY,
-                    metric_value=latency,
-                    tags=self.tags(self.predictor_version),
-                )
+            await self.metrics_repository.create_metric(
+                metric_name=PredictorMetrics.PREDICTOR_UNLOADING_LATENCY,
+                metric_value=latency,
+                tags=self.tags(),
             )
+
             self._loaded = False
 
     async def forward(self, predictor_input: Any) -> Any:
@@ -223,20 +217,16 @@ class BasePredictor(ABC):
             end_time = time.perf_counter()
             latency = end_time - start_time
 
-            self.event_bus.publish(
-                MetricsEvent.create_base_event(
-                    metric_name=PredictorMetrics.PREDICTOR_LATENCY,
-                    metric_value=latency,
-                    tags=self.tags(self.predictor_version),
-                )
+            await self.metrics_repository.create_metric(
+                metric_name=PredictorMetrics.PREDICTOR_LATENCY,
+                metric_value=latency,
+                tags=self.tags(),
             )
 
-            self.event_bus.publish(
-                MetricsEvent.create_base_event(
-                    metric_name=PredictorMetrics.PREDICTOR_PRICE,
-                    metric_value=result.price,
-                    tags=self.tags(self.predictor_version),
-                )
+            await self.metrics_repository.create_metric(
+                metric_name=PredictorMetrics.PREDICTOR_PRICE,
+                metric_value=result.price,
+                tags=self.tags(),
             )
 
             return result
@@ -245,11 +235,10 @@ class BasePredictor(ABC):
             end_time = time.perf_counter()
             latency = end_time - start_time
 
-            self.event_bus.publish(
-                MetricsEvent.create_base_event(
-                    metric_name=PredictorMetrics.PREDICTOR_ERROR,
-                    metric_value=1,
-                    tags=self.tags(self.predictor_version),
-                )
+            await self.metrics_repository.create_metric(
+                metric_name=PredictorMetrics.PREDICTOR_ERROR,
+                metric_value=1,
+                tags=self.tags(),
             )
+
             raise

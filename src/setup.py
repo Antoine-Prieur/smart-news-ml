@@ -12,7 +12,6 @@ from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.articles_handler import ArticlesHandler
-from src.events.handlers.metrics_handler import MetricsHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
@@ -74,7 +73,6 @@ class MLPlatformSetup:
         self,
         settings: Settings = Provide[Container.settings],
         event_bus: EventBus = Provide[Container.event_bus],
-        metrics_handler: MetricsHandler = Provide[Container.metrics_handler],
         articles_handler: ArticlesHandler = Provide[Container.articles_handler],
         logger: Logger = Provide[Container.logger],
     ) -> None:
@@ -83,10 +81,8 @@ class MLPlatformSetup:
             await event_bus.start()
             logger.info("Event system initialized and started")
 
-            event_bus.register_queue(settings.QUEUE_METRICS, 50)
             event_bus.register_queue(settings.QUEUE_ARTICLES, 1)
 
-            event_bus.subscribe(settings.QUEUE_METRICS, metrics_handler)
             event_bus.subscribe(settings.QUEUE_ARTICLES, articles_handler)
             logger.info("Event handlers registered")
 

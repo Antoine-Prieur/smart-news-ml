@@ -5,17 +5,22 @@ from bson import ObjectId
 from motor.core import AgnosticClientSession
 
 from src.core.settings import Settings
+from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.services.mappers.predictor_mapper import db_to_domain_predictor
-from src.services.models.predictor_models import Predictor
+from src.services.models.predictor_models import Predictor, PredictorMetrics
 
 
 class PredictorService:
     def __init__(
-        self, settings: Settings, predictor_repository: PredictorRepository
+        self,
+        settings: Settings,
+        predictor_repository: PredictorRepository,
+        metrics_repository: MetricsRepository,
     ) -> None:
         self.settings = settings
         self.predictor_repository = predictor_repository
+        self.metrics_repository = metrics_repository
 
     async def find_predictor_by_id(self, predictor_id: ObjectId | str) -> Predictor:
         if isinstance(predictor_id, str):
@@ -75,6 +80,13 @@ class PredictorService:
 
         return predictor_domain
 
+    @staticmethod
+    def build_tags(prediction_type: str, predictor_version: int) -> dict[str, str]:
+        return {
+            "prediction_type": prediction_type,
+            "predictor_version": str(predictor_version),
+        }
+
     # A/B testing
     def _redistribute_traffic(
         self, distributions: dict[ObjectId, float], traffic_to_redistribute: float
@@ -133,33 +145,50 @@ class PredictorService:
 
     async def adjust_traffic_distribution(
         self,
-        prediction_type: str,
         target_predictor_id: ObjectId,
         target_traffic: float,
     ) -> None:
         async def transaction(session: AgnosticClientSession) -> None:
-            predictor_documents = (
-                await self.predictor_repository.find_predictors_by_name(
-                    prediction_type, session=session
+            target_predictor = db_to_domain_predictor(
+                await self.predictor_repository.find_by_id(target_predictor_id)
+            )
+
+            predictor_docs = (
+                await self.predictor_repository.find_predictors_by_prediction_type(
+                    target_predictor.prediction_type, only_actives=True, session=session
                 )
             )
-            predictors: list[Predictor] = [
-                db_to_domain_predictor(predictor_document)
-                for predictor_document in predictor_documents
-            ]
-            current_distributions = {p.id: p.traffic_percentage for p in predictors}
 
-            if not predictors or target_predictor_id not in current_distributions:
+            predictors = {
+                db_to_domain_predictor(doc).id: db_to_domain_predictor(doc)
+                for doc in predictor_docs
+            }
+            predictors[target_predictor.id] = target_predictor
+
+            current_distributions = {
+                predictor_id: predictor.traffic_percentage
+                for predictor_id, predictor in predictors.items()
+            }
+
+            if target_predictor_id not in current_distributions:
                 raise ValueError(f"Target predictor {target_predictor_id} not found")
 
             new_distributions = self._calculate_traffic_distribution(
                 current_distributions, target_predictor_id, target_traffic
             )
 
-            for predictor in predictors:
-                if predictor.id in new_distributions:
-                    await self.predictor_repository.update_traffic_percentage(
-                        predictor.id, new_distributions[predictor.id], session=session
-                    )
+            for predictor_id, new_percentage in new_distributions.items():
+                await self.metrics_repository.create_metric(
+                    PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
+                    new_percentage,
+                    self.build_tags(
+                        target_predictor.prediction_type,
+                        predictors[predictor_id].predictor_version,
+                    ),
+                    session=session,
+                )
+                await self.predictor_repository.update_traffic_percentage(
+                    predictor_id, new_percentage, session=session
+                )
 
         await self.predictor_repository.start_transaction(transaction)

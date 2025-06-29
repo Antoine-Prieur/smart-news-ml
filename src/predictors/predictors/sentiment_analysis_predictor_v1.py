@@ -6,7 +6,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.core.logger import Logger
-from src.events.event_bus import EventBus
+from src.database.repositories.metrics_repository import MetricsRepository
 from src.predictors.base_predictor import BasePredictor
 from src.services.models.predictor_models import Prediction
 from src.services.predictor_service import PredictorService
@@ -25,10 +25,10 @@ class SentimentAnalysisPredictorV1(BasePredictor):
     def __init__(
         self,
         predictor_service: PredictorService,
-        event_bus: EventBus,
+        metrics_repository: MetricsRepository,
         logger: Logger,
     ) -> None:
-        super().__init__(predictor_service, event_bus, logger)
+        super().__init__(predictor_service, metrics_repository, logger)
 
         self.tokenizer = None
         self.model = None
