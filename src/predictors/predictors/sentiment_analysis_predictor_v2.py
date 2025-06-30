@@ -2,9 +2,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from transformers.utils.quantization_config import BitsAndBytesConfig
+from optimum.onnxruntime import ORTModelForSequenceClassification  # type: ignore
+from transformers import AutoTokenizer
 
 from src.core.logger import Logger
 from src.database.repositories.metrics_repository import MetricsRepository
@@ -43,32 +44,23 @@ class SentimentAnalysisPredictorV2(BasePredictor):
         return 2
 
     async def _download_predictor(self) -> Path:
-        self.logger.info(
-            f"Downloading sentiment analysis model with quantization: {self.MODEL_NAME}"
-        )
+        self.logger.info(f"Downloading sentiment analysis model: {self.MODEL_NAME}")
 
         temp_dir = Path(tempfile.mkdtemp())
 
         try:
             tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)  # type: ignore
 
-            quantization_config = BitsAndBytesConfig(
-                load_in_8bit=True,
+            model = ORTModelForSequenceClassification.from_pretrained(  # type: ignore
+                self.MODEL_NAME, export=True
             )
-
-            model = AutoModelForSequenceClassification.from_pretrained(  # type: ignore
-                self.MODEL_NAME,
-                quantization_config=quantization_config,
-                device_map="auto",
-            )
+            self.logger.info("Successfully converted PyTorch model to ONNX")
 
             temp_dir.mkdir(parents=True, exist_ok=True)
             tokenizer.save_pretrained(temp_dir)  # type: ignore
             model.save_pretrained(temp_dir)  # type: ignore
 
-            self.logger.info(
-                f"Successfully downloaded and quantized model at {temp_dir}"
-            )
+            self.logger.info(f"Successfully downloaded model to {temp_dir}")
             return temp_dir
 
         except Exception as e:
@@ -81,35 +73,27 @@ class SentimentAnalysisPredictorV2(BasePredictor):
 
     async def _load_predictor(self, predictor_weights_path: Path) -> None:
         self.logger.info(
-            f"Loading quantized sentiment analysis model from {predictor_weights_path}"
+            f"Loading sentiment analysis model from {predictor_weights_path}"
         )
 
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(str(predictor_weights_path))  # type: ignore
 
-            self.model = AutoModelForSequenceClassification.from_pretrained(  # type: ignore
+            self.model = ORTModelForSequenceClassification.from_pretrained(  # type: ignore
                 str(predictor_weights_path),
-                device_map="auto",
+                providers=["CPUExecutionProvider"],
             )
 
-            if hasattr(self.model, "hf_device_map"):  # type: ignore
-                self.logger.info(
-                    f"Model loaded with device map: {self.model.hf_device_map}"  # type: ignore
-                )
-            else:
-                self.logger.info(
-                    f"Model loaded on device: {next(self.model.parameters()).device}"  # type: ignore
-                )
+            self.logger.info("ONNX model loaded on CPU with optimized execution")
 
         except Exception as e:
-            self.logger.error(f"Failed to load quantized sentiment analysis model: {e}")
+            self.logger.error(f"Failed to load sentiment analysis model: {e}")
             raise
 
     async def _unload_predictor(self) -> None:
         self.logger.info("Unloading sentiment analysis model")
 
-        if self.model is not None:  # type: ignore
-            self.model = self.model.cpu() if hasattr(self.model, "cpu") else self.model  # type: ignore
+        if self.model is not None:
             del self.model
             self.model = None
 
@@ -120,6 +104,8 @@ class SentimentAnalysisPredictorV2(BasePredictor):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+        self.logger.info("Model unloaded successfully")
+
     async def _forward(self, predictor_input: Any) -> Prediction:
         if self.model is None or self.tokenizer is None:  # type: ignore
             raise RuntimeError("Model not loaded. Call load_predictor() first.")
@@ -128,7 +114,7 @@ class SentimentAnalysisPredictorV2(BasePredictor):
             text: str = predictor_input
         else:
             raise ValueError(
-                f"Invalid input format. Expected string, got {type(predictor_input)}"
+                f"Invalid input format. Expected string or dict with 'text' key, got {type(predictor_input)}"
             )
 
         if not text:
@@ -136,20 +122,29 @@ class SentimentAnalysisPredictorV2(BasePredictor):
 
         try:
             inputs = self.tokenizer(  # type: ignore
-                text, return_tensors="pt", truncation=True, padding=True, max_length=512
+                text,
+                return_tensors="np",
+                truncation=True,
+                padding=True,
+                max_length=512,
             )
 
-            inputs = {k: v.to(self.model.device) for k, v in inputs.items()}  # type: ignore
+            outputs = self.model(**inputs)  # type: ignore
 
-            with torch.no_grad():
-                outputs = self.model(**inputs)  # type: ignore
-                predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)  # type: ignore
-                predicted_class = torch.argmax(predictions, dim=-1).item()
-                confidence = predictions[0][predicted_class].item()  # type: ignore
+            logits = outputs.logits  # type: ignore
+
+            if hasattr(logits, "numpy"):  # type: ignore
+                logits = logits.numpy()  # type: ignore
+
+            exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))  # type: ignore
+            predictions = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+
+            predicted_class = np.argmax(predictions, axis=-1).item()
+            confidence = predictions[0][predicted_class].item()
 
             sentiment = self.SENTIMENT_MAP.get(int(predicted_class), "unknown")
 
-            price = len(text) * 0.001
+            price = len(text) * 0.001  # $0.001 per character
 
             return Prediction(
                 prediction_value=sentiment,
@@ -158,7 +153,5 @@ class SentimentAnalysisPredictorV2(BasePredictor):
             )
 
         except Exception as e:
-            self.logger.error(
-                f"Error during quantized sentiment analysis prediction: {e}"
-            )
+            self.logger.error(f"Error during sentiment analysis prediction: {e}")
             raise

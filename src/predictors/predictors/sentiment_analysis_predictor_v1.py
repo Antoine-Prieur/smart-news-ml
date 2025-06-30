@@ -2,10 +2,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
-from optimum.onnxruntime import ORTModelForSequenceClassification  # type: ignore
-from transformers import AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.core.logger import Logger
 from src.database.repositories.metrics_repository import MetricsRepository
@@ -50,11 +48,7 @@ class SentimentAnalysisPredictorV1(BasePredictor):
 
         try:
             tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)  # type: ignore
-
-            model = ORTModelForSequenceClassification.from_pretrained(  # type: ignore
-                self.MODEL_NAME, export=True
-            )
-            self.logger.info("Successfully converted PyTorch model to ONNX")
+            model = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME)  # type: ignore
 
             temp_dir.mkdir(parents=True, exist_ok=True)
             tokenizer.save_pretrained(temp_dir)  # type: ignore
@@ -77,14 +71,20 @@ class SentimentAnalysisPredictorV1(BasePredictor):
         )
 
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(predictor_weights_path))  # type: ignore
-
-            self.model = ORTModelForSequenceClassification.from_pretrained(  # type: ignore
-                str(predictor_weights_path),
-                providers=["CPUExecutionProvider"],
+            self.tokenizer = AutoTokenizer.from_pretrained(  # type: ignore
+                str(predictor_weights_path)
+            )
+            self.model = AutoModelForSequenceClassification.from_pretrained(  # type: ignore
+                str(predictor_weights_path)
             )
 
-            self.logger.info("ONNX model loaded on CPU with optimized execution")
+            self.model.eval()  # type: ignore
+
+            if torch.cuda.is_available():
+                self.model = self.model.cuda()  # type: ignore
+                self.logger.info("Model loaded on GPU")
+            else:
+                self.logger.info("Model loaded on CPU")
 
         except Exception as e:
             self.logger.error(f"Failed to load sentiment analysis model: {e}")
@@ -93,7 +93,8 @@ class SentimentAnalysisPredictorV1(BasePredictor):
     async def _unload_predictor(self) -> None:
         self.logger.info("Unloading sentiment analysis model")
 
-        if self.model is not None:
+        if self.model is not None:  # type: ignore
+            self.model = self.model.cpu() if hasattr(self.model, "cpu") else self.model  # type: ignore
             del self.model
             self.model = None
 
@@ -103,8 +104,6 @@ class SentimentAnalysisPredictorV1(BasePredictor):
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-        self.logger.info("Model unloaded successfully")
 
     async def _forward(self, predictor_input: Any) -> Prediction:
         if self.model is None or self.tokenizer is None:  # type: ignore
@@ -122,25 +121,17 @@ class SentimentAnalysisPredictorV1(BasePredictor):
 
         try:
             inputs = self.tokenizer(  # type: ignore
-                text,
-                return_tensors="np",
-                truncation=True,
-                padding=True,
-                max_length=512,
+                text, return_tensors="pt", truncation=True, padding=True, max_length=512
             )
 
-            outputs = self.model(**inputs)  # type: ignore
+            if torch.cuda.is_available() and next(self.model.parameters()).is_cuda:  # type: ignore
+                inputs = {k: v.cuda() for k, v in inputs.items()}  # type: ignore
 
-            logits = outputs.logits  # type: ignore
-
-            if hasattr(logits, "numpy"):  # type: ignore
-                logits = logits.numpy()  # type: ignore
-
-            exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))  # type: ignore
-            predictions = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
-
-            predicted_class = np.argmax(predictions, axis=-1).item()
-            confidence = predictions[0][predicted_class].item()
+            with torch.no_grad():
+                outputs = self.model(**inputs)  # type: ignore
+                predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)  # type: ignore
+                predicted_class = torch.argmax(predictions, dim=-1).item()
+                confidence = predictions[0][predicted_class].item()  # type: ignore
 
             sentiment = self.SENTIMENT_MAP.get(int(predicted_class), "unknown")
 
