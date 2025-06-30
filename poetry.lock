@@ -2,18 +2,18 @@
 
 [[package]]
 name = "accelerate"
-version = "1.7.0"
+version = "1.8.1"
 description = "Accelerate"
 optional = false
 python-versions = ">=3.9.0"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
-    {file = "accelerate-1.7.0-py3-none-any.whl", hash = "sha256:cf57165cca28769c6cf2650812371c81b18e05743dfa3c748524b1bb4f2b272f"},
-    {file = "accelerate-1.7.0.tar.gz", hash = "sha256:e8a2a5503d6237b9eee73cc8d36cf543f9c2d8dd2c6713450b322f5e6d53a610"},
+    {file = "accelerate-1.8.1-py3-none-any.whl", hash = "sha256:c47b8994498875a2b1286e945bd4d20e476956056c7941d512334f4eb44ff991"},
+    {file = "accelerate-1.8.1.tar.gz", hash = "sha256:f60df931671bc4e75077b852990469d4991ce8bd3a58e72375c3c95132034db9"},
 ]
 
 [package.dependencies]
-huggingface-hub = ">=0.21.0"
+huggingface_hub = ">=0.21.0"
 numpy = ">=1.17,<3.0.0"
 packaging = ">=20.0"
 psutil = "*"
@@ -30,7 +30,7 @@ sagemaker = ["sagemaker"]
 test-dev = ["bitsandbytes", "datasets", "diffusers", "evaluate", "scikit-learn", "scipy", "timm", "torchdata (>=0.8.0)", "torchpippy (>=0.2.0)", "tqdm", "transformers"]
 test-fp8 = ["torchao"]
 test-prod = ["parameterized", "pytest (>=7.2.0,<=8.0.0)", "pytest-order", "pytest-subtests", "pytest-xdist"]
-test-trackers = ["comet-ml", "dvclive", "matplotlib", "mlflow", "tensorboard", "wandb"]
+test-trackers = ["comet-ml", "dvclive", "matplotlib", "mlflow", "swanlab", "tensorboard", "wandb"]
 testing = ["bitsandbytes", "datasets", "diffusers", "evaluate", "parameterized", "pytest (>=7.2.0,<=8.0.0)", "pytest-order", "pytest-subtests", "pytest-xdist", "scikit-learn", "scipy", "timm", "torchdata (>=0.8.0)", "torchpippy (>=0.2.0)", "tqdm", "transformers"]
 
 [[package]]
@@ -2225,7 +2225,7 @@ version = "7.0.0"
 description = "Cross-platform lib for process and system monitoring in Python.  NOTE: the syntax of this script MUST be kept compatible with Python 2.7."
 optional = false
 python-versions = ">=3.6"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "psutil-7.0.0-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:101d71dc322e3cffd7cea0650b09b3d08b8e7c4109dd6809fe452dfd00e58b25"},
     {file = "psutil-7.0.0-cp36-abi3-macosx_11_0_arm64.whl", hash = "sha256:39db632f6bb862eeccf56660871433e111b6ea58f2caea825571951d4b6aa3da"},
@@ -3828,4 +3828,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "eda0323ffe13995df877ce07e3ec14c5df692106e64042bf8e463470238b1a63"
+content-hash = "e5c3d3ba892149e9a3cd805131d93dabb37902b27704d22cf4442fdf5b435a90"
