@@ -78,9 +78,6 @@ class MLPlatformSetup:
     ) -> None:
         """Initialize event bus and register event handlers"""
         try:
-            await event_bus.start()
-            logger.info("Event system initialized and started")
-
             event_bus.register_queue(settings.QUEUE_ARTICLES, 1)
 
             event_bus.subscribe(settings.QUEUE_ARTICLES, articles_handler)

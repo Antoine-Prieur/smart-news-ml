@@ -42,6 +42,15 @@ class EventBus:
         for queue_name in self._queues.keys():
             task = asyncio.create_task(self._start_event_queue(queue_name))
             self._tasks[queue_name] = task
+            self.logger.info(f"EventBus: Started consumer for {queue_name}")
+
+        try:
+            await asyncio.gather(*self._tasks.values())
+        except asyncio.CancelledError:
+            self.logger.info("EventBus: Tasks cancelled")
+        except Exception as e:
+            self.logger.error(f"EventBus: Error in tasks: {e}")
+            raise
 
     async def stop(self) -> None:
         if not self._running:
@@ -61,7 +70,7 @@ class EventBus:
         self._tasks.clear()
         self.logger.info("EventBus: Stopped")
 
-    async def publish_async(self, event_data: BaseEvent) -> None:
+    async def publish(self, event_data: BaseEvent) -> None:
         try:
             queue_name = self._event_to_queue[event_data.event_type]
             await self._redis_client.rpush(queue_name, event_data.model_dump_json())
@@ -76,9 +85,6 @@ class EventBus:
         except Exception as e:
             self.logger.error(f"EventBus: Failed to publish event: {e}")
             raise
-
-    def publish(self, event_data: BaseEvent) -> None:
-        asyncio.create_task(self.publish_async(event_data))
 
     def register_queue(self, queue_name: str, batch_size: int) -> None:
         if queue_name in self._queues:

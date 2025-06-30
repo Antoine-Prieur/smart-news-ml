@@ -52,7 +52,10 @@ class Container(containers.DeclarativeContainer):
 
     # Services
     predictor_service = providers.Singleton(
-        PredictorService, settings=settings, predictor_repository=predictor_repository
+        PredictorService,
+        settings=settings,
+        predictor_repository=predictor_repository,
+        metrics_repository=metrics_repository,
     )
 
     # Event
@@ -81,5 +84,5 @@ class Container(containers.DeclarativeContainer):
 
     # Handlers
     articles_handler = providers.Singleton(
-        ArticlesHandler, articles_service=article_service
+        ArticlesHandler, article_service=article_service
     )

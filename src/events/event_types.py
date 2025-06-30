@@ -31,7 +31,7 @@ class EventHandler(Protocol):
 
 # Events
 class ArticleEvent(BaseModel):
-    id: ObjectId
+    id: ObjectId = Field(alias="_id")
     title: str | None = None
     description: str | None = None
 
@@ -58,7 +58,7 @@ class ArticleEvent(BaseModel):
     def create_base_event(
         cls, id: ObjectId, title: str | None, description: str | None
     ) -> BaseEvent:
-        instance = cls(id=id, title=title, description=description)
+        instance = cls(_id=id, title=title, description=description)
 
         return BaseEvent(event_type=EventType.ARTICLES_EVENT, content=instance)
 
