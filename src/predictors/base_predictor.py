@@ -36,6 +36,7 @@ class BasePredictor(ABC):
         predictor_service: PredictorService,
         metrics_repository: MetricsRepository,
         logger: Logger,
+        unload_timeout_seconds: int = 300,
     ) -> None:
         self.predictor_service = predictor_service
         self.metrics_repository = metrics_repository
@@ -43,10 +44,13 @@ class BasePredictor(ABC):
 
         self._initialized = False
         self._loaded = False
-        self._predictor: Predictor | None = None
 
         self._init_lock = asyncio.Lock()
         self._load_lock = asyncio.Lock()
+
+        self.unload_timeout_seconds = unload_timeout_seconds
+        self._last_used: float = 0.0
+        self._unload_task: asyncio.Task[Any] | None = None
 
     def _ensure_initialized(self) -> None:
         if not self._initialized:
@@ -55,14 +59,11 @@ class BasePredictor(ABC):
                 "Call initialize() or use create() factory method."
             )
 
-        if self._predictor is None:
-            raise RuntimeError(f"{self.__class__.__name__} initialization incomplete")
-
-    def get_predictor(self) -> Predictor:
-        self._ensure_initialized()
-
-        assert self._predictor is not None
-        return self._predictor
+    async def get_predictor(self) -> Predictor | None:
+        return await self.predictor_service.find_predictor_by_type_and_version(
+            prediction_type=self.prediction_type,
+            predictor_version=self.predictor_version,
+        )
 
     async def setup(self) -> None:
         async with self._init_lock:
@@ -73,18 +74,15 @@ class BasePredictor(ABC):
                 f"Initializing predictor {self.prediction_type}.{self.predictor_version}"
             )
 
-            predictor = await self.predictor_service.find_predictor_by_type_and_version(
-                prediction_type=self.prediction_type,
-                predictor_version=self.predictor_version,
-            )
+            predictor = await self.get_predictor()
 
             if predictor:
-                self._predictor = predictor
                 predictor_weights_path = (
                     self.predictor_service.get_predictor_weights_path(predictor.id)
                 )
 
                 if predictor_weights_path.exists():
+                    self.logger.info("Predictor initalized successfully...")
                     self._initialized = True
                     return
 
@@ -101,7 +99,6 @@ class BasePredictor(ABC):
                     prediction_type=self.prediction_type,
                     predictor_version=self.predictor_version,
                 )
-                self._predictor = predictor
 
             self._initialized = True
 
@@ -125,12 +122,18 @@ class BasePredictor(ABC):
 
         async with self._load_lock:
             if self._loaded:
-                self.logger.warning(
+                self.logger.info(
                     f"Predictor {self.prediction_type}.{self.predictor_version} already loaded"
                 )
                 return
 
-            predictor = self.get_predictor()
+            predictor = await self.get_predictor()
+
+            if not predictor:
+                raise ValueError(
+                    f"Failed to load predictor {self.prediction_type}.{self.predictor_version}: document not found"
+                )
+
             predictor_weights_path = self.predictor_service.get_predictor_weights_path(
                 predictor.id
             )
@@ -212,6 +215,10 @@ class BasePredictor(ABC):
 
         start_time = time.perf_counter()
 
+        self._last_used = time.time()
+        if self._unload_task and not self._unload_task.done():
+            self._unload_task.cancel()
+
         try:
             result = await self._forward(predictor_input)
             end_time = time.perf_counter()
@@ -229,6 +236,8 @@ class BasePredictor(ABC):
                 tags=self.tags(),
             )
 
+            self._schedule_unload()
+
             return result
 
         except Exception:
@@ -242,3 +251,33 @@ class BasePredictor(ABC):
             )
 
             raise
+
+    # Memory
+    def _schedule_unload(self) -> None:
+        if self._unload_task and not self._unload_task.done():
+            self._unload_task.cancel()
+
+        self._unload_task = asyncio.create_task(self._unload_after_timeout())
+
+    async def _unload_after_timeout(self) -> None:
+        try:
+            await asyncio.sleep(self.unload_timeout_seconds)
+
+            if self._loaded:
+                await self.unload_predictor()
+                self.logger.info(
+                    f"Auto-unloaded predictor {self.prediction_type}.{self.predictor_version} "
+                    f"after {self.unload_timeout_seconds}s timeout"
+                )
+
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            self.logger.error(f"Error in auto-unload: {e}")
+
+    async def manual_unload(self) -> None:
+        if self._unload_task and not self._unload_task.done():
+            self._unload_task.cancel()
+
+        if self._loaded:
+            await self.unload_predictor()

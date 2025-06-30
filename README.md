@@ -1,35 +1,72 @@
 # Smart News ML Platform
 
-An ML platform built to explore and demonstrate production-quality patterns in Python, MongoDB, Redis, and modern ML practices.
+A ML platform exploring MLOps practices. Built to explore clean abstractions, proper model lifecycle management, and scalable ML engineering patterns using Python, MongoDB, Redis, and event-driven architectures.
 
-This project powers [Smart News](https://smart-news-frontend.vercel.app/) and represents my attempt to build the kind of ML engineering environment I'm passionate about - one with clean abstractions, proper model lifecycle management, and thoughtful architecture. It's my playground for implementing the MLOps practices I believe make ML systems maintainable and scalable.
+This platform powers [Smart News](https://smart-news-frontend.vercel.app/) and serves as a comprehensive example of how to build maintainable ML systems that can evolve and scale in production environments.
 
-## 🚀 Features
+## Project Status
 
-- A/B Testing: Traffic distribution and model comparison framework
-- Extensible Design: Easy addition of new model versions and prediction types through clean interfaces
-- Model Versioning: Complete predictor lifecycle management
-- Metrics & Monitoring: Real-time performance tracking with custom metrics
-- Event-Driven Architecture: Asynchronous processing with redis
+This is an active development project focused on platform architecture and MLOps best practices. Current priorities:
 
-## 🛠️ Installation
+- **Platform-first approach**: Emphasizing clean interfaces and extensible design over model accuracy optimization
+- **Monolithic deployment**: Models and orchestrator currently share a repository for rapid iteration - will be decomposed into microservices as the architecture matures
+- **Learning-oriented**: Built to demonstrate and refine production ML engineering patterns
 
-This project uses [Poetry](https://python-poetry.org/) to manage requirements.
+## 🚀 Core Features
+
+**A/B Testing Framework**  
+Deploy multiple model versions simultaneously with configurable traffic splitting and automated performance comparison.
+
+**Extensible Model Architecture**  
+Add new prediction models and content types through clean interfaces without touching core platform code.
+
+**Complete Model Lifecycle Management**  
+Version control, deployment pipelines, rollback capabilities, and automated model retirement workflows.
+
+**Real-time Monitoring & Metrics**  
+Custom performance tracking with configurable alerts and dashboard integration for production visibility.
+
+**Event-Driven Processing**  
+Asynchronous model inference and data processing using Redis pub/sub for scalable, non-blocking operations.
+
+## 🛠️ Quick Start
+
+**Prerequisites**
+
+- [Poetry](https://python-poetry.org/) for dependency management
+- [Docker](https://www.docker.com/) for infrastructure services
+- [direnv](https://direnv.net/) (optional) for environment management
+
+**Installation**
 
 ```bash
+# Install dependencies
 poetry install
-```
 
-I also use [direnv](https://direnv.net/) to setup environment, but you can just skip it and export variables in `.envrc`.
-
-To setup dependencies:
-
-```bash
+# Start infrastructure services
 docker-compose up -d
+
+# Configure environment (or manually export variables from .envrc)
+direnv allow
 ```
 
-## 🔗 Related Projects
+## 🏗️ Architecture
 
-- [News Crawler](https://github.com/Antoine-Prieur/smart-news-crawler): Rust-based news scraping using News API (Note: Used this project to learn Rust)
-- [Web API](https://github.com/Antoine-Prieur/smart-news-backend): RESTful API server for frontend integration (Also part of my Rust learning journey)
-- [Dashboard](https://github.com/Antoine-Prieur/smart-news-frontend): React-based analytics and monitoring interface (Built using a template with lots of vibe coding - frontend wasn't the focus here)
+This platform demonstrates several key ML engineering patterns:
+
+- **Clean separation** between model logic and platform infrastructure
+- **Configuration-driven** model deployment and A/B testing
+- **Event-driven** architecture for scalable async processing
+- **Comprehensive monitoring** with custom metrics
+- **Version-controlled** model artifacts and deployment history
+
+## 🔗 Related Components
+
+**[News Crawler](https://github.com/Antoine-Prieur/smart-news-crawler)**  
+Rust-based content ingestion service using News API for real-time article collection and preprocessing.
+
+**[Web API](https://github.com/Antoine-Prieur/smart-news-backend)**  
+RESTful API server handling frontend integration and external service communication, built with modern Rust web frameworks.
+
+**[Analytics Dashboard](https://github.com/Antoine-Prieur/smart-news-frontend)**  
+React-based monitoring interface providing real-time insights into model performance, A/B test results, and system health metrics.

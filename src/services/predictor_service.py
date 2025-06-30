@@ -1,3 +1,4 @@
+import random
 import shutil
 from pathlib import Path
 
@@ -43,6 +44,21 @@ class PredictorService:
             return None
 
         return db_to_domain_predictor(predictor_document)
+
+    async def find_predictors_by_prediction_type(
+        self,
+        prediction_type: str,
+        only_actives: bool = False,
+    ) -> list[Predictor]:
+        predictor_documents = (
+            await self.predictor_repository.find_predictors_by_prediction_type(
+                prediction_type=prediction_type, only_actives=only_actives
+            )
+        )
+        return [
+            db_to_domain_predictor(predictor_document)
+            for predictor_document in predictor_documents
+        ]
 
     def get_predictor_weights_path(self, predictor_id: ObjectId | str) -> Path:
         if isinstance(predictor_id, ObjectId):
@@ -192,3 +208,20 @@ class PredictorService:
                 )
 
         await self.predictor_repository.start_transaction(transaction)
+
+    async def get_predictors_and_select_randomly(
+        self,
+        prediction_type: str,
+    ) -> tuple[list[Predictor], Predictor]:
+        active_predictors = await self.find_predictors_by_prediction_type(
+            prediction_type=prediction_type, only_actives=True
+        )
+
+        if not active_predictors:
+            raise ValueError("No active predictors found")
+
+        weights = [predictor.traffic_percentage for predictor in active_predictors]
+
+        selected_predictor = random.choices(active_predictors, weights=weights, k=1)[0]
+
+        return active_predictors, selected_predictor

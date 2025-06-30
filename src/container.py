@@ -16,6 +16,9 @@ from src.events.handlers.articles_handler import ArticlesHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
+from src.predictors.predictors.sentiment_analysis_predictor_v2 import (
+    SentimentAnalysisPredictorV2,
+)
 from src.services.article_service import ArticleService
 from src.services.predictor_service import PredictorService
 
@@ -74,12 +77,21 @@ class Container(containers.DeclarativeContainer):
         logger=logger,
     )
 
+    sentiment_analysis_predictor_v2 = providers.Singleton(
+        SentimentAnalysisPredictorV2,
+        predictor_service=predictor_service,
+        metrics_repository=metrics_repository,
+        logger=logger,
+    )
+
     # Services which depend on predictors
     article_service = providers.Singleton(
         ArticleService,
         logger=logger,
-        sentiment_predictor=sentiment_analysis_predictor_v1,
+        sentiment_predictor_v1=sentiment_analysis_predictor_v1,
+        sentiment_predictor_v2=sentiment_analysis_predictor_v2,
         article_predictions_repository=article_predictions_repository,
+        predictor_service=predictor_service,
     )
 
     # Handlers

@@ -15,6 +15,9 @@ from src.events.handlers.articles_handler import ArticlesHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
+from src.predictors.predictors.sentiment_analysis_predictor_v2 import (
+    SentimentAnalysisPredictorV2,
+)
 
 
 class MLPlatformSetup:
@@ -78,7 +81,7 @@ class MLPlatformSetup:
     ) -> None:
         """Initialize event bus and register event handlers"""
         try:
-            event_bus.register_queue(settings.QUEUE_ARTICLES, 1)
+            event_bus.register_queue(settings.QUEUE_ARTICLES, 10)
 
             event_bus.subscribe(settings.QUEUE_ARTICLES, articles_handler)
             logger.info("Event handlers registered")
@@ -106,13 +109,16 @@ class MLPlatformSetup:
         sentiment_analysis_predictor_v1: SentimentAnalysisPredictorV1 = Provide[
             Container.sentiment_analysis_predictor_v1
         ],
+        sentiment_analysis_predictor_v2: SentimentAnalysisPredictorV2 = Provide[
+            Container.sentiment_analysis_predictor_v2
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize all application predictors"""
         try:
-            logger.info("Application predictors initialized successfully")
-
             await sentiment_analysis_predictor_v1.setup()
+            await sentiment_analysis_predictor_v2.setup()
+            logger.info("Application predictors initialized successfully")
 
         except Exception as e:
             logger.error(f"Failed to initialize predictors: {e}")
@@ -139,10 +145,20 @@ class MLPlatformSetup:
         self,
         mongo_client: MongoClient = Provide[Container.mongo_client],
         event_bus: EventBus = Provide[Container.event_bus],
+        sentiment_predictor_v1: SentimentAnalysisPredictorV1 = Provide[
+            Container.sentiment_analysis_predictor_v1
+        ],
+        sentiment_predictor_v2: SentimentAnalysisPredictorV2 = Provide[
+            Container.sentiment_analysis_predictor_v1
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Cleanup resources during shutdown"""
         try:
+            await sentiment_predictor_v1.manual_unload()
+            await sentiment_predictor_v2.manual_unload()
+            logger.info("Predictors unloaded")
+
             await event_bus.stop()
             logger.info("Event bus stopped")
 

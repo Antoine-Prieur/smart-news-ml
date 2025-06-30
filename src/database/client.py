@@ -30,9 +30,13 @@ class MongoClient:
         transaction: Callable[[AgnosticClientSession], Awaitable[T]],
     ) -> T:
         try:
+            # I disabled transactions because my free Mongo cluster is not deployed in a replicaset
             async with await self.client.start_session() as session:
-                async with session.start_transaction():
-                    return await transaction(session)
+                return await transaction(session)
+
+            # async with await self.client.start_session() as session:
+            #     async with session.start_transaction():
+            #         return await transaction(session)
         except Exception as e:
             self.logger.error(f"Could not execute transaction: {e}")
             raise
