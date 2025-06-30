@@ -8,11 +8,10 @@ from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
 )
 from src.database.repositories.articles_repository import ArticleRepository
-from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
-from src.events.handlers.metrics_handler import MetricsHandler
+from src.events.handlers.articles_handler import ArticlesHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
@@ -44,9 +43,6 @@ class MLPlatformSetup:
     async def _setup_repositories(
         self,
         articles_repository: ArticleRepository = Provide[Container.articles_repository],
-        deployment_repository: DeploymentRepository = Provide[
-            Container.deployment_repository
-        ],
         metrics_repository: MetricsRepository = Provide[Container.metrics_repository],
         predictor_repository: PredictorRepository = Provide[
             Container.predictor_repository
@@ -59,7 +55,6 @@ class MLPlatformSetup:
         """Initialize all repositories and create database indexes"""
         repositories = [
             ("Articles", articles_repository),
-            ("Deployment", deployment_repository),
             ("Metrics", metrics_repository),
             ("Predictor", predictor_repository),
             ("Article Predictions", article_predictions_repository),
@@ -76,16 +71,16 @@ class MLPlatformSetup:
     @inject
     async def _setup_event_system(
         self,
+        settings: Settings = Provide[Container.settings],
         event_bus: EventBus = Provide[Container.event_bus],
-        metrics_handler: MetricsHandler = Provide[Container.metrics_handler],
+        articles_handler: ArticlesHandler = Provide[Container.articles_handler],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize event bus and register event handlers"""
         try:
-            await event_bus.start()
-            logger.info("Event system initialized and started")
+            event_bus.register_queue(settings.QUEUE_ARTICLES, 1)
 
-            event_bus.subscribe(metrics_handler)
+            event_bus.subscribe(settings.QUEUE_ARTICLES, articles_handler)
             logger.info("Event handlers registered")
 
         except Exception as e:

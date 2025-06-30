@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from bson import ObjectId
+from motor.core import AgnosticClientSession
 from pymongo import ASCENDING, IndexModel
 
 from src.database.client import MongoClient
@@ -33,7 +35,10 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         ]
 
     async def find_predictor(
-        self, prediction_type: str, predictor_version: int
+        self,
+        prediction_type: str,
+        predictor_version: int,
+        session: AgnosticClientSession | None = None,
     ) -> PredictorDocument | None:
         """Find predictor by source name and version"""
         filters: dict[str, Any] = {}
@@ -41,7 +46,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         filters["prediction_type"] = prediction_type
         filters["predictor_version"] = predictor_version
 
-        doc = await self.collection.find_one(filters)
+        doc = await self.collection.find_one(filters, session=session)
 
         if not doc:
             return None
@@ -49,7 +54,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         return self._to_model(doc)
 
     async def _insert_predictor(
-        self, predictor: PredictorDocument
+        self, predictor: PredictorDocument, session: AgnosticClientSession | None = None
     ) -> PredictorDocument:
         """Insert a new  predictor document"""
         doc_dict = self._to_document(predictor)
@@ -57,13 +62,16 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
         if doc_dict.get("_id") is None:
             doc_dict.pop("_id", None)
 
-        result = await self.collection.insert_one(doc_dict)
+        result = await self.collection.insert_one(doc_dict, session=session)
 
         predictor.id = result.inserted_id
         return predictor
 
-    async def create_predictor(
-        self, prediction_type: str, predictor_version: int
+    async def _create_predictor(
+        self,
+        prediction_type: str,
+        predictor_version: int,
+        session: AgnosticClientSession | None = None,
     ) -> PredictorDocument:
         now = datetime.now(timezone.utc)
 
@@ -81,9 +89,29 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
             updated_at=now,
         )
 
-        return await self._insert_predictor(predictor)
+        return await self._insert_predictor(predictor, session=session)
 
-    async def get_max_version(self, prediction_type: str) -> int:
+    async def create_predictor(
+        self,
+        prediction_type: str,
+        predictor_version: int,
+        session: AgnosticClientSession | None = None,
+    ) -> PredictorDocument:
+        if session is not None:
+            return await self._create_predictor(
+                prediction_type, predictor_version, session
+            )
+
+        async def transaction(session: AgnosticClientSession) -> PredictorDocument:
+            return await self._create_predictor(
+                prediction_type, predictor_version, session
+            )
+
+        return await self.mongo_client.start_transaction(transaction)
+
+    async def get_max_version(
+        self, prediction_type: str, session: AgnosticClientSession | None = None
+    ) -> int:
         if not prediction_type or not prediction_type.strip():
             raise ValueError("Predictor name cannot be empty or None")
 
@@ -92,19 +120,68 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
             {"$group": {"_id": None, "max_version": {"$max": "$predictor_version"}}},
         ]
 
-        result = await self.collection.aggregate(pipeline).to_list(1)
+        result = await self.collection.aggregate(pipeline, session=session).to_list(1)
 
         if not result or result[0]["max_version"] is None:
             return 0
 
         return result[0]["max_version"]
 
-    async def find_predictors_by_name(
-        self, prediction_type: str
+    async def find_predictors_by_prediction_type(
+        self,
+        prediction_type: str,
+        only_actives: bool = False,
+        session: AgnosticClientSession | None = None,
     ) -> list[PredictorDocument]:
         filters: dict[str, Any] = {"prediction_type": prediction_type}
 
-        cursor = self.collection.find(filters).sort("predictor_version", -1)
+        if only_actives:
+            filters["traffic_percentage"] = {"$gt": 0}
+
+        cursor = self.collection.find(filters, session=session).sort(
+            "predictor_version", -1
+        )
         docs = await cursor.to_list(None)
 
         return [self._to_model(doc) for doc in docs]
+
+    async def update_traffic_percentage(
+        self,
+        predictor_id: ObjectId | str,
+        traffic_percentage: float,
+        session: AgnosticClientSession | None = None,
+    ) -> PredictorDocument:
+        from datetime import datetime, timezone
+
+        result = await self.collection.find_one_and_update(
+            {"_id": predictor_id},
+            {
+                "$set": {
+                    "traffic_percentage": traffic_percentage,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=True,
+            session=session,
+        )
+
+        if not result:
+            raise ValueError(f"Predictor with id {predictor_id} not found")
+
+        return self._to_model(result)
+
+    async def validate_traffic_distribution(
+        self, prediction_type: str, session: AgnosticClientSession | None = None
+    ) -> bool:
+        pipeline = [
+            {"$match": {"prediction_type": prediction_type}},
+            {"$group": {"_id": None, "total_traffic": {"$sum": "$traffic_percentage"}}},
+        ]
+
+        result = await self.collection.aggregate(pipeline, session=session).to_list(1)
+
+        if not result:
+            return True
+
+        total_traffic = result[0]["total_traffic"]
+        return abs(total_traffic - 100.0) < 1e-6

@@ -9,16 +9,14 @@ from src.database.repositories.articles_predictions_repository import (
     ArticlePredictionsRepository,
 )
 from src.database.repositories.articles_repository import ArticleRepository
-from src.database.repositories.deployment_repository import DeploymentRepository
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
-from src.events.handlers.metrics_handler import MetricsHandler
+from src.events.handlers.articles_handler import ArticlesHandler
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
 from src.services.article_service import ArticleService
-from src.services.deployment_service import DeploymentService
 from src.services.predictor_service import PredictorService
 
 
@@ -34,15 +32,12 @@ class Container(containers.DeclarativeContainer):
     )
 
     mongo_client = providers.Singleton(
-        MongoClient, client=motor_client, settings=settings
+        MongoClient, client=motor_client, settings=settings, logger=logger
     )
 
     # Repositories
     articles_repository = providers.Singleton(
         ArticleRepository, mongo_client=mongo_client
-    )
-    deployment_repository = providers.Singleton(
-        DeploymentRepository, mongo_client=mongo_client
     )
     metrics_repository = providers.Singleton(
         MetricsRepository, mongo_client=mongo_client
@@ -55,32 +50,27 @@ class Container(containers.DeclarativeContainer):
         ArticlePredictionsRepository, mongo_client=mongo_client
     )
 
-    # Events
-    event_bus = providers.Singleton(EventBus, logger=logger)
-    metrics_handler = providers.Singleton(
-        MetricsHandler, metrics_repository=metrics_repository
-    )
-
     # Services
-    deployment_service = providers.Singleton(
-        DeploymentService, deployment_repository=deployment_repository
-    )
     predictor_service = providers.Singleton(
-        PredictorService, settings=settings, predictor_repository=predictor_repository
+        PredictorService,
+        settings=settings,
+        predictor_repository=predictor_repository,
+        metrics_repository=metrics_repository,
     )
 
-    # Redis
+    # Event
     redis_client = providers.Singleton(
         redis.from_url,  # type: ignore
         url=settings.provided.REDIS_URL,
         decode_responses=False,
     )
+    event_bus = providers.Singleton(EventBus, logger=logger, redis=redis_client)
 
     # Predictors
     sentiment_analysis_predictor_v1 = providers.Singleton(
         SentimentAnalysisPredictorV1,
         predictor_service=predictor_service,
-        event_bus=event_bus,
+        metrics_repository=metrics_repository,
         logger=logger,
     )
 
@@ -90,4 +80,9 @@ class Container(containers.DeclarativeContainer):
         logger=logger,
         sentiment_predictor=sentiment_analysis_predictor_v1,
         article_predictions_repository=article_predictions_repository,
+    )
+
+    # Handlers
+    articles_handler = providers.Singleton(
+        ArticlesHandler, article_service=article_service
     )

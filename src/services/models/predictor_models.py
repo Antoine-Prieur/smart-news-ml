@@ -7,13 +7,19 @@ from bson import ObjectId
 
 
 class PredictorMetrics(str, Enum):
+    # Inference
     PREDICTOR_LATENCY = "predictor_latency"
     PREDICTOR_PRICE = "predictor_price"
     PREDICTOR_ERROR = "predictor_error"
+
+    # Loading
     PREDICTOR_LOADING_LATENCY = "predictor_loading_latency"
     PREDICTOR_UNLOADING_LATENCY = "predictor_unloading_latency"
     PREDICTOR_LOADING_ERROR = "predictor_loading_error"
     PREDICTOR_UNLOADING_ERROR = "predictor_unloading_error"
+
+    # A/B testing
+    PREDICTOR_TRAFFIC_UPDATE = "predictor_traffic_update"
 
 
 @dataclass
@@ -30,5 +36,6 @@ class Predictor:
     id: ObjectId
     prediction_type: str
     predictor_version: int
+    traffic_percentage: float
     created_at: datetime
     updated_at: datetime

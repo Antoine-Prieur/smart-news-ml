@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
+from motor.core import AgnosticClientSession
 from pymongo import ASCENDING, IndexModel
 
 from src.database.client import MongoClient
@@ -38,25 +39,29 @@ class ArticlePredictionsRepository(BaseRepository[ArticlePredictionsDocument]):
         ]
 
     async def find_by_article_id(
-        self, article_id: ObjectId | str
+        self, article_id: ObjectId | str, session: AgnosticClientSession | None = None
     ) -> list[ArticlePredictionsDocument]:
         if isinstance(article_id, str):
             article_id = ObjectId(article_id)
 
-        cursor = self.collection.find({"article_id": article_id})
+        cursor = self.collection.find({"article_id": article_id}, session=session)
 
         docs = await cursor.to_list(None)
 
         return [self._to_model(doc) for doc in docs]
 
     async def find_by_article_id_and_prediction_type(
-        self, article_id: ObjectId | str, prediction_type: str
+        self,
+        article_id: ObjectId | str,
+        prediction_type: str,
+        session: AgnosticClientSession | None = None,
     ) -> ArticlePredictionsDocument:
         if isinstance(article_id, str):
             article_id = ObjectId(article_id)
 
         doc = await self.collection.find_one(
-            {"article_id": article_id, "prediction_type": prediction_type}
+            {"article_id": article_id, "prediction_type": prediction_type},
+            session=session,
         )
 
         if not doc:
@@ -74,6 +79,7 @@ class ArticlePredictionsRepository(BaseRepository[ArticlePredictionsDocument]):
         prediction_value: Any,
         prediction_confidence: float | None = None,
         set_as_selected: bool = True,
+        session: AgnosticClientSession | None = None,
     ) -> ArticlePredictionsDocument:
         """Insert or update a prediction for an article"""
         if isinstance(article_id, str):
@@ -110,6 +116,7 @@ class ArticlePredictionsRepository(BaseRepository[ArticlePredictionsDocument]):
             update_doc,
             upsert=True,
             return_document=True,
+            session=session,
         )
 
         return self._to_model(result)

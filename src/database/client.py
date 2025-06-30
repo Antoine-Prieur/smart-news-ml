@@ -1,13 +1,19 @@
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, TypeVar
 
 from motor.core import AgnosticClient, AgnosticClientSession
 
+from src.core.logger import Logger
 from src.core.settings import Settings
+
+T = TypeVar("T")
 
 
 class MongoClient:
-    def __init__(self, client: AgnosticClient[Any], settings: Settings) -> None:
+    def __init__(
+        self, client: AgnosticClient[Any], settings: Settings, logger: Logger
+    ) -> None:
         self.client = client
+        self.logger = logger
         self.database = self.client[settings.MONGO_DATABASE_NAME]
 
     async def test_connection(self) -> None:
@@ -19,17 +25,14 @@ class MongoClient:
     def close(self) -> None:
         self.client.close()
 
-    async def multi_documents_transaction(
+    async def start_transaction(
         self,
-        transaction: Callable[[AgnosticClientSession | None], Awaitable[None]],
-    ) -> None:
+        transaction: Callable[[AgnosticClientSession], Awaitable[T]],
+    ) -> T:
         try:
             async with await self.client.start_session() as session:
                 async with session.start_transaction():
-                    await transaction(session)
+                    return await transaction(session)
         except Exception as e:
-            if str(e) == "Mongomock does not support sessions yet":
-                # Yielding nothing to have session=None and continue using the regular client
-                await transaction(None)
-            else:
-                raise e
+            self.logger.error(f"Could not execute transaction: {e}")
+            raise
