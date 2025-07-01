@@ -1,3 +1,4 @@
+import math
 import random
 import shutil
 from pathlib import Path
@@ -80,14 +81,18 @@ class PredictorService:
             )
 
     async def register_predictor(
-        self, predictor_weights_path: Path, prediction_type: str, predictor_version: int
+        self,
+        predictor_weights_path: Path,
+        prediction_type: str,
+        predictor_description: str,
+        predictor_version: int,
     ) -> Predictor:
         if not predictor_weights_path.exists():
             raise ValueError(
                 f"The weights path {predictor_weights_path} does not exist"
             )
         predictor_document = await self.predictor_repository.create_predictor(
-            prediction_type, predictor_version
+            prediction_type, predictor_description, predictor_version
         )
 
         predictor_domain = db_to_domain_predictor(predictor_document)
@@ -105,13 +110,13 @@ class PredictorService:
 
     # A/B testing
     def _redistribute_traffic(
-        self, distributions: dict[ObjectId, float], traffic_to_redistribute: float
-    ) -> dict[ObjectId, float]:
+        self, distributions: dict[ObjectId, int], traffic_to_redistribute: int
+    ) -> dict[ObjectId, int]:
         if not distributions or traffic_to_redistribute == 0:
             return distributions.copy()
 
         sorted_items = sorted(distributions.items(), key=lambda x: x[1])
-        result: dict[ObjectId, float] = {}
+        result: dict[ObjectId, int] = {}
         remaining_traffic = traffic_to_redistribute
         remaining_predictors = len(sorted_items)
 
@@ -119,7 +124,7 @@ class PredictorService:
             avg_adjustment = remaining_traffic / remaining_predictors
 
             if current_traffic >= avg_adjustment:
-                result[predictor_id] = current_traffic - avg_adjustment
+                result[predictor_id] = math.floor(current_traffic - avg_adjustment)
                 remaining_traffic -= avg_adjustment
             else:
                 result[predictor_id] = 0
@@ -131,10 +136,10 @@ class PredictorService:
 
     def _calculate_traffic_distribution(
         self,
-        current_distributions: dict[ObjectId, float],
+        current_distributions: dict[ObjectId, int],
         target_predictor_id: ObjectId,
-        target_traffic: float,
-    ) -> dict[ObjectId, float]:
+        target_traffic: int,
+    ) -> dict[ObjectId, int]:
         if target_traffic < 0:
             raise ValueError(f"Traffic must be >= 0%. Got: {target_traffic}")
         if target_traffic > 100:
@@ -162,7 +167,7 @@ class PredictorService:
     async def adjust_traffic_distribution(
         self,
         target_predictor_id: ObjectId,
-        target_traffic: float,
+        target_traffic: int,
     ) -> None:
         async def transaction(session: AgnosticClientSession) -> None:
             target_predictor = db_to_domain_predictor(

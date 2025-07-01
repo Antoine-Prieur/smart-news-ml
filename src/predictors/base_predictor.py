@@ -17,6 +17,10 @@ class BasePredictor(ABC):
 
     @property
     @abstractmethod
+    def predictor_description(self) -> str: ...
+
+    @property
+    @abstractmethod
     def predictor_version(self) -> int: ...
 
     @abstractmethod
@@ -97,6 +101,7 @@ class BasePredictor(ABC):
                 predictor = await self.predictor_service.register_predictor(
                     predictor_weights_path=weights_path,
                     prediction_type=self.prediction_type,
+                    predictor_description=self.predictor_description,
                     predictor_version=self.predictor_version,
                 )
 

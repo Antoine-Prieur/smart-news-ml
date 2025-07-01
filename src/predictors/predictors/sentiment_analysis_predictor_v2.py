@@ -39,6 +39,10 @@ class SentimentAnalysisPredictorV2(BasePredictor):
         return "sentiment_analysis"
 
     @property
+    def predictor_description(self) -> str:
+        return "ONNX version of nlptown/bert-base-multilingual-uncased-sentiment"
+
+    @property
     def predictor_version(self) -> int:
         return 2
 

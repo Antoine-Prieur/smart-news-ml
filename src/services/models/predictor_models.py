@@ -35,7 +35,8 @@ class Predictor:
 
     id: ObjectId
     prediction_type: str
+    predictor_description: str
     predictor_version: int
-    traffic_percentage: float
+    traffic_percentage: int
     created_at: datetime
     updated_at: datetime

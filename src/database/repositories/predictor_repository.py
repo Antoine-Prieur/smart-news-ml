@@ -70,6 +70,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
     async def _create_predictor(
         self,
         prediction_type: str,
+        predictor_description: str,
         predictor_version: int,
         session: AgnosticClientSession | None = None,
     ) -> PredictorDocument:
@@ -84,6 +85,7 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
         predictor = PredictorDocument(
             prediction_type=prediction_type,
+            predictor_description=predictor_description,
             predictor_version=predictor_version,
             created_at=now,
             updated_at=now,
@@ -94,17 +96,18 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
     async def create_predictor(
         self,
         prediction_type: str,
+        predictor_description: str,
         predictor_version: int,
         session: AgnosticClientSession | None = None,
     ) -> PredictorDocument:
         if session is not None:
             return await self._create_predictor(
-                prediction_type, predictor_version, session
+                prediction_type, predictor_description, predictor_version, session
             )
 
         async def transaction(session: AgnosticClientSession) -> PredictorDocument:
             return await self._create_predictor(
-                prediction_type, predictor_version, session
+                prediction_type, predictor_description, predictor_version, session
             )
 
         return await self.mongo_client.start_transaction(transaction)

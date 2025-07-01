@@ -7,8 +7,11 @@ from pydantic import BaseModel, Field, field_validator
 class PredictorDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     prediction_type: str
+    predictor_description: str = Field(
+        description="Small description to display in the metrics page"
+    )
     predictor_version: int
-    traffic_percentage: float = Field(default=0.0)
+    traffic_percentage: int = Field(default=0)
     created_at: datetime
     updated_at: datetime
 
