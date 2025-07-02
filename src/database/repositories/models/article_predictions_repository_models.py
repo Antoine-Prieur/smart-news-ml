@@ -15,7 +15,7 @@ class ArticlePredictionsDocument(BaseModel):
     article_id: ObjectId
     prediction_type: str
     selected_predictor_id: ObjectId
-    selected_prediction: PredictionDocument
+    selected_prediction: PredictionDocument | None = Field(default=None)
     predictions: dict[str, PredictionDocument] = Field(
         default_factory=dict[str, PredictionDocument]
     )

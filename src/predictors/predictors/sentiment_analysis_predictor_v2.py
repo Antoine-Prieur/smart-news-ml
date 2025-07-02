@@ -97,7 +97,7 @@ class SentimentAnalysisPredictorV2(BasePredictor):
     async def _unload_predictor(self) -> None:
         self.logger.info("Unloading sentiment analysis model")
 
-        if self.model is not None:
+        if self.model is not None:  # type: ignore
             del self.model
             self.model = None
 
