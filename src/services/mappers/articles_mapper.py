@@ -1,3 +1,5 @@
+from typing import overload
+
 from src.database.repositories.models.article_predictions_repository_models import (
     ArticlePredictionsDocument,
     PredictionDocument,
@@ -5,14 +7,38 @@ from src.database.repositories.models.article_predictions_repository_models impo
 from src.services.models.article_models import ArticlePredictions, Prediction
 
 
-def db_to_domain_prediction(db_model: PredictionDocument) -> Prediction:
+@overload
+def db_to_domain_prediction(db_model: None) -> None: ...
+
+
+@overload
+def db_to_domain_prediction(db_model: PredictionDocument) -> Prediction: ...
+
+
+def db_to_domain_prediction(db_model: PredictionDocument | None) -> Prediction | None:
+    if db_model is None:
+        return None
+
     return Prediction(
         prediction_confidence=db_model.prediction_confidence,
         prediction_value=db_model.prediction_value,
     )
 
 
-def domain_to_db_prediction(domain_model: Prediction) -> PredictionDocument:
+@overload
+def domain_to_db_prediction(domain_model: None) -> None: ...
+
+
+@overload
+def domain_to_db_prediction(domain_model: Prediction) -> PredictionDocument: ...
+
+
+def domain_to_db_prediction(
+    domain_model: Prediction | None,
+) -> PredictionDocument | None:
+    if domain_model is None:
+        return None
+
     return PredictionDocument(
         prediction_confidence=domain_model.prediction_confidence,
         prediction_value=domain_model.prediction_value,
@@ -25,7 +51,7 @@ def db_to_domain_article_predictions(
     if db_model.id is None:
         raise ValueError("DB models should always have an ID")
 
-    predictions = {
+    predictions: dict[str, Prediction] = {
         key: db_to_domain_prediction(prediction)
         for key, prediction in db_model.predictions.items()
     }

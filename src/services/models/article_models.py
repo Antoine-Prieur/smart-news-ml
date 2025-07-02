@@ -15,7 +15,7 @@ class ArticlePredictions:
     article_id: str
     prediction_type: str
     selected_predictor_id: str
-    selected_prediction: Prediction
+    selected_prediction: Prediction | None
     predictions: dict[str, Prediction]
     created_at: datetime
     updated_at: datetime
