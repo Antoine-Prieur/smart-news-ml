@@ -60,7 +60,11 @@ def db_to_domain_article_predictions(
         id=str(db_model.id),
         article_id=str(db_model.article_id),
         prediction_type=db_model.prediction_type,
-        selected_predictor_id=str(db_model.selected_predictor_id),
+        selected_predictor_id=(
+            str(db_model.selected_predictor_id)
+            if db_model.selected_predictor_id is not None
+            else None
+        ),
         selected_prediction=db_to_domain_prediction(db_model.selected_prediction),
         predictions=predictions,
         created_at=db_model.created_at,
@@ -82,7 +86,11 @@ def domain_to_db_article_predictions(
         _id=ObjectId(domain_model.id),
         article_id=ObjectId(domain_model.article_id),
         prediction_type=domain_model.prediction_type,
-        selected_predictor_id=ObjectId(domain_model.selected_predictor_id),
+        selected_predictor_id=(
+            ObjectId(domain_model.selected_predictor_id)
+            if domain_model.selected_predictor_id is not None
+            else None
+        ),
         selected_prediction=domain_to_db_prediction(domain_model.selected_prediction),
         predictions=predictions,
         created_at=domain_model.created_at,

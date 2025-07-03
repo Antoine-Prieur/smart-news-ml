@@ -56,7 +56,9 @@ class SentimentAnalysisPredictorV2(BasePredictor):
             tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)  # type: ignore
 
             model = ORTModelForSequenceClassification.from_pretrained(  # type: ignore
-                self.MODEL_NAME, export=True
+                self.MODEL_NAME,
+                export=True,
+                providers=["CPUExecutionProvider"],
             )
             self.logger.info("Successfully converted PyTorch model to ONNX")
 
