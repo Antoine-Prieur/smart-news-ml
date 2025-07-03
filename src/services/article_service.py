@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any, Awaitable
 
 from src.core.logger import Logger
 from src.database.repositories.articles_predictions_repository import (
@@ -66,30 +67,18 @@ class ArticleService:
     async def process_articles(
         self, articles: list[ArticleEvent]
     ) -> list[ArticlePredictions]:
+        if not articles:
+            self.logger.warning("No articles to process")
+            return []
+
         self.logger.info(f"Received {len(articles)} articles...")
 
-        active_predictors, selected_predictor = (
-            await self.predictor_service.get_predictors_and_select_randomly(
-                self.PREDICTION_TYPE,
+        active_predictors = (
+            await self.predictor_service.find_predictors_by_prediction_type(
+                prediction_type=self.PREDICTION_TYPE, only_actives=True
             )
         )
-
-        semaphore = asyncio.Semaphore(self.concurrent_predictions)
-
-        async def predict_with_semaphore(
-            article: ArticleEvent,
-            predictor: Predictor,
-            predictor_instance: BasePredictor,
-        ) -> ArticlePredictions:
-            async with semaphore:
-                return await self._make_prediction_and_save(
-                    article,
-                    predictor,
-                    predictor_instance,
-                    predictor.predictor_version == selected_predictor.predictor_version,
-                )
-
-        predictions: list[ArticlePredictions] = []
+        predictor_instances: list[tuple[Predictor, BasePredictor]] = []
 
         for predictor in active_predictors:
             predictor_instance = self.sentiment_predictors.get(
@@ -102,11 +91,47 @@ class ArticleService:
                 )
                 continue
 
-            tasks = [
-                predict_with_semaphore(article, predictor, predictor_instance)
-                for article in articles
-            ]
-            predictions = await asyncio.gather(*tasks)
+            predictor_instances.append((predictor, predictor_instance))
+
+        if not predictor_instances:
+            self.logger.warning("No valid predictor instances found")
+            return []
+
+        semaphore = asyncio.Semaphore(self.concurrent_predictions)
+
+        async def predict_with_semaphore(
+            article: ArticleEvent,
+            predictor: Predictor,
+            predictor_instance: BasePredictor,
+            is_selected: bool,
+        ) -> ArticlePredictions:
+
+            async with semaphore:
+                return await self._make_prediction_and_save(
+                    article, predictor, predictor_instance, is_selected
+                )
+
+        predictions: list[ArticlePredictions] = []
+
+        tasks: list[Awaitable[Any]] = []
+
+        for article in articles:
+            selected_predictor = await self.predictor_service.get_random_predictor(
+                prediction_type=self.PREDICTION_TYPE,
+                active_predictors=active_predictors,
+            )
+
+            for predictor, predictor_instance in predictor_instances:
+                is_selected = (
+                    predictor.predictor_version == selected_predictor.predictor_version
+                )
+                tasks.append(
+                    predict_with_semaphore(
+                        article, predictor, predictor_instance, is_selected
+                    )
+                )
+
+        predictions = await asyncio.gather(*tasks)
 
         self.logger.info(f"Finished processing {len(articles)} articles...")
 
