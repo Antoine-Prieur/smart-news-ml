@@ -56,6 +56,7 @@ class Container(containers.DeclarativeContainer):
     # Services
     predictor_service = providers.Singleton(
         PredictorService,
+        logger=logger,
         settings=settings,
         predictor_repository=predictor_repository,
         metrics_repository=metrics_repository,
