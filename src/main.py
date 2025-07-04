@@ -74,7 +74,7 @@ def main() -> None:
 
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
+        host="::",
         log_level=logging.INFO,
         port=settings.API_PORT,
         reload=False,
