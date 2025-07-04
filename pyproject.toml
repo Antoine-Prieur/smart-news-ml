@@ -18,6 +18,8 @@ dependencies = [
     "types-redis (>=4.6.0.20241004,<5.0.0.0)",
     "accelerate (>=1.8.1,<2.0.0)",
     "optimum[onnxruntime] (>=1.26.1,<2.0.0)",
+    "fastapi (>=0.115.14,<0.116.0)",
+    "uvicorn (>=0.35.0,<0.36.0)",
 ]
 package-mode = false
 

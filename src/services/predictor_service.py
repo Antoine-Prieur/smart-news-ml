@@ -1,4 +1,3 @@
-import math
 import random
 import shutil
 from pathlib import Path
@@ -6,6 +5,7 @@ from pathlib import Path
 from bson import ObjectId
 from motor.core import AgnosticClientSession
 
+from src.core.logger import Logger
 from src.core.settings import Settings
 from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
@@ -16,11 +16,14 @@ from src.services.models.predictor_models import Predictor, PredictorMetrics
 class PredictorService:
     def __init__(
         self,
+        logger: Logger,
         settings: Settings,
         predictor_repository: PredictorRepository,
         metrics_repository: MetricsRepository,
     ) -> None:
+        self.logger = logger
         self.settings = settings
+
         self.predictor_repository = predictor_repository
         self.metrics_repository = metrics_repository
 
@@ -115,22 +118,23 @@ class PredictorService:
         if not distributions or traffic_to_redistribute == 0:
             return distributions.copy()
 
-        sorted_items = sorted(distributions.items(), key=lambda x: x[1])
-        result: dict[ObjectId, int] = {}
-        remaining_traffic = traffic_to_redistribute
-        remaining_predictors = len(sorted_items)
+        result = distributions.copy()
+        remaining_traffic = abs(traffic_to_redistribute)
 
-        for predictor_id, current_traffic in sorted_items:
-            avg_adjustment = remaining_traffic / remaining_predictors
+        contributing_predictors = {k: v for k, v in distributions.items() if v > 0}
+        total_contributing = sum(contributing_predictors.values())
 
-            if current_traffic >= avg_adjustment:
-                result[predictor_id] = math.floor(current_traffic - avg_adjustment)
-                remaining_traffic -= avg_adjustment
+        if total_contributing == 0:
+            return result
+
+        for predictor_id, current_traffic in contributing_predictors.items():
+            proportion = current_traffic / total_contributing
+            adjustment = round(remaining_traffic * proportion)
+
+            if traffic_to_redistribute < 0:
+                result[predictor_id] = max(0, current_traffic - adjustment)
             else:
-                result[predictor_id] = 0
-                remaining_traffic -= current_traffic
-
-            remaining_predictors -= 1
+                result[predictor_id] = current_traffic + adjustment
 
         return result
 
@@ -140,29 +144,33 @@ class PredictorService:
         target_predictor_id: ObjectId,
         target_traffic: int,
     ) -> dict[ObjectId, int]:
-        if target_traffic < 0:
-            raise ValueError(f"Traffic must be >= 0%. Got: {target_traffic}")
-        if target_traffic > 100:
-            raise ValueError(f"Traffic cannot exceed 100%. Got: {target_traffic}")
+        if target_traffic < 0 or target_traffic > 100:
+            raise ValueError(f"Traffic must be between 0-100%. Got: {target_traffic}")
 
         if target_predictor_id not in current_distributions:
-            return current_distributions.copy()
+            raise ValueError(f"Target predictor {target_predictor_id} not found")
 
-        old_target_traffic = current_distributions[target_predictor_id]
-        traffic_delta = target_traffic - old_target_traffic
+        current_target_traffic = current_distributions[target_predictor_id]
+        traffic_delta = target_traffic - current_target_traffic
+
+        new_distributions = current_distributions.copy()
+        new_distributions[target_predictor_id] = target_traffic
+
+        if traffic_delta == 0:
+            return new_distributions
 
         other_predictors = {
-            pid: traffic
-            for pid, traffic in current_distributions.items()
-            if pid != target_predictor_id
+            k: v for k, v in current_distributions.items() if k != target_predictor_id
         }
 
         if not other_predictors:
             return {target_predictor_id: target_traffic}
 
-        adjusted_others = self._redistribute_traffic(other_predictors, -traffic_delta)
+        redistributed = self._redistribute_traffic(other_predictors, -traffic_delta)
 
-        return {target_predictor_id: target_traffic, **adjusted_others}
+        new_distributions.update(redistributed)
+
+        return new_distributions
 
     async def adjust_traffic_distribution(
         self,
@@ -230,3 +238,35 @@ class PredictorService:
         selected_predictor = random.choices(active_predictors, weights=weights, k=1)[0]
 
         return selected_predictor
+
+    async def shift_traffic_to_newest(
+        self, prediction_type: str
+    ) -> dict[ObjectId, int]:
+        newest_predictor_document = (
+            await self.predictor_repository.get_newest_predictor(prediction_type)
+        )
+
+        if newest_predictor_document is None:
+            raise ValueError(f"No predictors found for {prediction_type}")
+
+        newest_predictor = db_to_domain_predictor(newest_predictor_document)
+
+        target_traffic = min(
+            self.settings.MAX_TRAFFIC_THRESHOLD, newest_predictor.traffic_percentage + 5
+        )
+
+        if target_traffic == self.settings.MAX_TRAFFIC_THRESHOLD:
+            self.logger.warning(
+                f"Could not increase traffic for {newest_predictor.prediction_type}.{newest_predictor.predictor_version}: "
+                f"reached maximum threshold of {self.settings.MAX_TRAFFIC_THRESHOLD}%. Manual validation required to increase further."
+            )
+        else:
+            await self.adjust_traffic_distribution(
+                target_predictor_id=newest_predictor.id, target_traffic=target_traffic
+            )
+
+        updated_predictors = await self.find_predictors_by_prediction_type(
+            prediction_type=prediction_type, only_actives=True
+        )
+
+        return {p.id: p.traffic_percentage for p in updated_predictors}

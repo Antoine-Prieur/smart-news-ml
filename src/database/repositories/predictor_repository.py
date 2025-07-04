@@ -76,7 +76,11 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
     ) -> PredictorDocument:
         now = datetime.now(timezone.utc)
 
-        max_version = await self.get_max_version(prediction_type)
+        max_version: int = 0
+        newest_predictor = await self.get_newest_predictor(prediction_type)
+
+        if newest_predictor:
+            max_version = newest_predictor.predictor_version
 
         if predictor_version <= max_version:
             raise ValueError(
@@ -112,23 +116,21 @@ class PredictorRepository(BaseRepository[PredictorDocument]):
 
         return await self.mongo_client.start_transaction(transaction)
 
-    async def get_max_version(
+    async def get_newest_predictor(
         self, prediction_type: str, session: AgnosticClientSession | None = None
-    ) -> int:
-        if not prediction_type or not prediction_type.strip():
-            raise ValueError("Predictor name cannot be empty or None")
+    ) -> PredictorDocument | None:
+        cursor = (
+            self.collection.find({"prediction_type": prediction_type}, session=session)
+            .sort("predictor_version", -1)
+            .limit(1)
+        )
 
-        pipeline = [
-            {"$match": {"prediction_type": prediction_type}},
-            {"$group": {"_id": None, "max_version": {"$max": "$predictor_version"}}},
-        ]
+        docs = await cursor.to_list(1)
 
-        result = await self.collection.aggregate(pipeline, session=session).to_list(1)
+        if not docs:
+            return None
 
-        if not result or result[0]["max_version"] is None:
-            return 0
-
-        return result[0]["max_version"]
+        return self._to_model(docs[0])
 
     async def find_predictors_by_prediction_type(
         self,
