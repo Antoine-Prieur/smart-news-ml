@@ -8,6 +8,7 @@ class MetricDocument(BaseModel):
     id: ObjectId | None = Field(default=None, alias="_id")
     metric_name: str
     metric_value: float
+    description: str | None = Field(default=None)
     tags: dict[str, str] = Field(default_factory=dict[str, str])
     created_at: datetime
     updated_at: datetime

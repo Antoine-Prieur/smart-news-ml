@@ -15,6 +15,9 @@ from src.events.handlers.articles_handler import ArticlesHandler
 from src.predictors.predictors.news_classification_v1 import (
     NewsClassificationPredictorV1,
 )
+from src.predictors.predictors.news_classification_v2 import (
+    NewsClassificationPredictorV2,
+)
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
@@ -118,6 +121,9 @@ class MLPlatformSetup:
         news_classification_predictor_v1: NewsClassificationPredictorV1 = Provide[
             Container.news_classification_predictor_v1
         ],
+        news_classification_predictor_v2: NewsClassificationPredictorV2 = Provide[
+            Container.news_classification_predictor_v2
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize all application predictors"""
@@ -125,6 +131,7 @@ class MLPlatformSetup:
             await sentiment_analysis_predictor_v1.setup()
             await sentiment_analysis_predictor_v2.setup()
             await news_classification_predictor_v1.setup()
+            await news_classification_predictor_v2.setup()
             logger.info("Application predictors initialized successfully")
 
         except Exception as e:
@@ -161,6 +168,9 @@ class MLPlatformSetup:
         news_classification_predictor_v1: NewsClassificationPredictorV1 = Provide[
             Container.news_classification_predictor_v1
         ],
+        news_classification_predictor_v2: NewsClassificationPredictorV2 = Provide[
+            Container.news_classification_predictor_v2
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Cleanup resources during shutdown"""
@@ -168,6 +178,7 @@ class MLPlatformSetup:
             await sentiment_predictor_v1.manual_unload()
             await sentiment_predictor_v2.manual_unload()
             await news_classification_predictor_v1.manual_unload()
+            await news_classification_predictor_v2.manual_unload()
             logger.info("Predictors unloaded")
 
             await event_bus.stop()

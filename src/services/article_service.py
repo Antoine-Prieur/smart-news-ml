@@ -10,6 +10,9 @@ from src.predictors.base_predictor import BasePredictor
 from src.predictors.predictors.news_classification_v1 import (
     NewsClassificationPredictorV1,
 )
+from src.predictors.predictors.news_classification_v2 import (
+    NewsClassificationPredictorV2,
+)
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
@@ -32,6 +35,7 @@ class ArticleService:
         sentiment_predictor_v1: SentimentAnalysisPredictorV1,
         sentiment_predictor_v2: SentimentAnalysisPredictorV2,
         news_classification_predictor_v1: NewsClassificationPredictorV1,
+        news_classification_predictor_v2: NewsClassificationPredictorV2,
         article_predictions_repository: ArticlePredictionsRepository,
         predictor_service: PredictorService,
         concurrent_predictions: int = 1,
@@ -44,7 +48,8 @@ class ArticleService:
         }
 
         self.news_classification_predictors: dict[int, BasePredictor] = {
-            news_classification_predictor_v1.predictor_version: news_classification_predictor_v1
+            news_classification_predictor_v1.predictor_version: news_classification_predictor_v1,
+            news_classification_predictor_v2.predictor_version: news_classification_predictor_v2,
         }
 
         self.article_predictions_repository = article_predictions_repository
