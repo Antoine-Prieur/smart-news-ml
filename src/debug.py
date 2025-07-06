@@ -15,17 +15,17 @@ async def publish_test_event(
     logger: Logger = Provide[Container.logger],
 ) -> None:
     test_content = {
-        "_id": {"$oid": "685a5d35a821629c2f060ae4"},
-        "source": {"id": "the-washington-post", "name": "the washington post"},
-        "author": "trisha thadani, joshua partlow",
-        "title": "tesla launches long-awaited robotaxi in austin - the washington post",
-        "description": "the test, limited in scope and shrouded in secrecy, is a crucial step for a company still struggling with the fallout from its founder's foray into politics.",
-        "url": "https://www.washingtonpost.com/technology/2025/06/22/tesla-robotaxi-launch-austin/",
-        "url_to_image": "https://www.washingtonpost.com/wp-apps/imrs.php?src=https://arc-anglerfish-washpost-prod-washpost.s3.amazonaws.com/public/yizcmwh2jtqhdlzsucxhpajmyy_size-normalized.jpg&w=1440",
-        "published_at": {"$date": "2025-06-23t04:42:53.000z"},
-        "content": "tesla held its first robotaxi rides in austin on sunday, a cautious and modest launch that came more than a decade after ceo elon musk first pitched the idea.\r\na group of social media influencers and… [+3648 chars]",
-        "created_at": {"$date": "2025-06-24t08:09:25.691z"},
-        "updated_at": {"$date": "2025-06-24t08:09:25.691z"},
+        "_id": {"$oid": "68626112738fd4b469393731"},
+        "source": {"id": "the-washington-post", "name": "The Washington Post"},
+        "author": "Jacob Bogage",
+        "title": "What’s in Trump and Senate Republicans’ tax and immigration bill? - The Washington Post",
+        "description": "The Senate is on the verge of advancing Trump’s priorities, dubbed the One Big Beautiful Bill. Here’s how it could change the federal government and the U.S. economy.",
+        "url": "https://www.washingtonpost.com/business/2025/06/28/republican-senate-trump-tax-immigration-plan/",
+        "url_to_image": "https://www.washingtonpost.com/wp-apps/imrs.php?src=https://arc-anglerfish-washpost-prod-washpost.s3.amazonaws.com/public/VGI4RQ5W77W3XELSYRARD2JYPA_size-normalized.JPG&w=1440",
+        "published_at": {"$date": "2025-06-29T08:06:27.000Z"},
+        "content": "New tax breaks. Massive spending on border security. Cuts to social safety net programs. Pullbacks on investments to fight climate change. New limits on student loans.\r\nIf it becomes law, President D… [+10402 chars]",
+        "created_at": {"$date": "2025-06-30T10:04:02.695Z"},
+        "updated_at": {"$date": "2025-06-30T10:04:02.695Z"},
     }
 
     event = BaseEvent(

@@ -24,6 +24,9 @@ class ArticlePredictionsDocument(BaseModel):
 
     @model_validator(mode="after")
     def validate_selected_prediction(self) -> Self:
+        if self.selected_predictor_id is None:
+            return self
+
         if str(self.selected_predictor_id) not in self.predictions:
             raise ValueError(
                 f"Selected prediction {self.selected_predictor_id} should be a valid ObjectId from predictions"

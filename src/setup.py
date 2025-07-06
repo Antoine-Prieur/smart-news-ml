@@ -12,6 +12,9 @@ from src.database.repositories.metrics_repository import MetricsRepository
 from src.database.repositories.predictor_repository import PredictorRepository
 from src.events.event_bus import EventBus
 from src.events.handlers.articles_handler import ArticlesHandler
+from src.predictors.predictors.news_classification_v1 import (
+    NewsClassificationPredictorV1,
+)
 from src.predictors.predictors.sentiment_analysis_predictor_v1 import (
     SentimentAnalysisPredictorV1,
 )
@@ -112,12 +115,16 @@ class MLPlatformSetup:
         sentiment_analysis_predictor_v2: SentimentAnalysisPredictorV2 = Provide[
             Container.sentiment_analysis_predictor_v2
         ],
+        news_classification_predictor_v1: NewsClassificationPredictorV1 = Provide[
+            Container.news_classification_predictor_v1
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize all application predictors"""
         try:
             await sentiment_analysis_predictor_v1.setup()
             await sentiment_analysis_predictor_v2.setup()
+            await news_classification_predictor_v1.setup()
             logger.info("Application predictors initialized successfully")
 
         except Exception as e:
@@ -151,12 +158,16 @@ class MLPlatformSetup:
         sentiment_predictor_v2: SentimentAnalysisPredictorV2 = Provide[
             Container.sentiment_analysis_predictor_v1
         ],
+        news_classification_predictor_v1: NewsClassificationPredictorV1 = Provide[
+            Container.news_classification_predictor_v1
+        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Cleanup resources during shutdown"""
         try:
             await sentiment_predictor_v1.manual_unload()
             await sentiment_predictor_v2.manual_unload()
+            await news_classification_predictor_v1.manual_unload()
             logger.info("Predictors unloaded")
 
             await event_bus.stop()
