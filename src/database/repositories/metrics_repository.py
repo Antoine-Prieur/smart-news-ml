@@ -59,6 +59,7 @@ class MetricsRepository(BaseRepository[MetricDocument]):
         metric_name: str,
         metric_value: float,
         tags: dict[str, str] | None = None,
+        description: str | None = None,
         session: AgnosticClientSession | None = None,
     ) -> MetricDocument:
         """Create and insert a new  metric with automatic timestamps"""
@@ -69,6 +70,7 @@ class MetricsRepository(BaseRepository[MetricDocument]):
         metric = MetricDocument(
             metric_name=metric_name,
             metric_value=metric_value,
+            description=description,
             tags=tags,
             created_at=now,
             updated_at=now,

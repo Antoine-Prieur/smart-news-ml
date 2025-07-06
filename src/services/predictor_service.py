@@ -1,6 +1,7 @@
 import random
 import shutil
 from pathlib import Path
+from typing import Literal
 
 from bson import ObjectId
 from motor.core import AgnosticClientSession
@@ -176,6 +177,11 @@ class PredictorService:
         self,
         target_predictor_id: ObjectId,
         target_traffic: int,
+        metric: Literal[
+            PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
+            PredictorMetrics.PREDICTOR_TRAFFIC_DEACTIVATION,
+        ],
+        description: str | None = None,
     ) -> None:
         async def transaction(session: AgnosticClientSession) -> None:
             target_predictor = db_to_domain_predictor(
@@ -208,12 +214,13 @@ class PredictorService:
 
             for predictor_id, new_percentage in new_distributions.items():
                 await self.metrics_repository.create_metric(
-                    PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
+                    metric,
                     new_percentage,
                     self.build_tags(
                         target_predictor.prediction_type,
                         predictors[predictor_id].predictor_version,
                     ),
+                    description=description,
                     session=session,
                 )
                 await self.predictor_repository.update_traffic_percentage(
@@ -239,20 +246,23 @@ class PredictorService:
 
         return selected_predictor
 
-    async def shift_traffic_to_newest(
-        self, prediction_type: str
+    async def shift_newest_predictor_traffic(
+        self,
+        prediction_type: str,
+        description: str | None = None,
     ) -> dict[ObjectId, int]:
-        newest_predictor_document = (
+        target_predictor_document = (
             await self.predictor_repository.get_newest_predictor(prediction_type)
         )
 
-        if newest_predictor_document is None:
-            raise ValueError(f"No predictors found for {prediction_type}")
+        if target_predictor_document is None:
+            raise ValueError(f"No predictors found for {prediction_type}.latest")
 
-        newest_predictor = db_to_domain_predictor(newest_predictor_document)
+        newest_predictor = db_to_domain_predictor(target_predictor_document)
 
         target_traffic = min(
-            self.settings.MAX_TRAFFIC_THRESHOLD, newest_predictor.traffic_percentage + 5
+            self.settings.MAX_TRAFFIC_THRESHOLD,
+            newest_predictor.traffic_percentage + 5,
         )
 
         if target_traffic == self.settings.MAX_TRAFFIC_THRESHOLD:
@@ -262,8 +272,41 @@ class PredictorService:
             )
         else:
             await self.adjust_traffic_distribution(
-                target_predictor_id=newest_predictor.id, target_traffic=target_traffic
+                target_predictor_id=newest_predictor.id,
+                target_traffic=target_traffic,
+                metric=PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
+                description=description,
             )
+
+        updated_predictors = await self.find_predictors_by_prediction_type(
+            prediction_type=prediction_type, only_actives=True
+        )
+
+        return {p.id: p.traffic_percentage for p in updated_predictors}
+
+    async def deactivate_predictor(
+        self,
+        prediction_type: str,
+        predictor_version: int,
+        description: str | None = None,
+    ) -> dict[ObjectId, int]:
+        target_predictor_document = await self.predictor_repository.find_predictor(
+            prediction_type, predictor_version
+        )
+
+        if target_predictor_document is None:
+            raise ValueError(
+                f"No predictors found for {prediction_type}.{predictor_version}"
+            )
+
+        target_predictor = db_to_domain_predictor(target_predictor_document)
+
+        await self.adjust_traffic_distribution(
+            target_predictor_id=target_predictor.id,
+            metric=PredictorMetrics.PREDICTOR_TRAFFIC_DEACTIVATION,
+            target_traffic=0,
+            description=description,
+        )
 
         updated_predictors = await self.find_predictors_by_prediction_type(
             prediction_type=prediction_type, only_actives=True

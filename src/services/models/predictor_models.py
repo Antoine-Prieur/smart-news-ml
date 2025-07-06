@@ -20,6 +20,7 @@ class PredictorMetrics(str, Enum):
 
     # A/B testing
     PREDICTOR_TRAFFIC_UPDATE = "predictor_traffic_update"
+    PREDICTOR_TRAFFIC_DEACTIVATION = "predictor_traffic_deactivation"
 
 
 @dataclass
