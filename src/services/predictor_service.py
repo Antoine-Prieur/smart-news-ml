@@ -265,7 +265,7 @@ class PredictorService:
             newest_predictor.traffic_percentage + 5,
         )
 
-        if target_traffic == self.settings.MAX_TRAFFIC_THRESHOLD:
+        if target_traffic > self.settings.MAX_TRAFFIC_THRESHOLD:
             self.logger.warning(
                 f"Could not increase traffic for {newest_predictor.prediction_type}.{newest_predictor.predictor_version}: "
                 f"reached maximum threshold of {self.settings.MAX_TRAFFIC_THRESHOLD}%. Manual validation required to increase further."
@@ -277,6 +277,40 @@ class PredictorService:
                 metric=PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
                 description=description,
             )
+
+        updated_predictors = await self.find_predictors_by_prediction_type(
+            prediction_type=prediction_type, only_actives=True
+        )
+
+        return {p.id: p.traffic_percentage for p in updated_predictors}
+
+    async def set_predictor_traffic(
+        self,
+        prediction_type: str,
+        predictor_version: int,
+        traffic: int,
+        description: str | None = None,
+    ) -> dict[ObjectId, int]:
+        if not 0 <= traffic <= 100:
+            raise ValueError(f"Traffic should be between 0 and 100, found {traffic}")
+
+        target_predictor_document = await self.predictor_repository.find_predictor(
+            prediction_type, predictor_version
+        )
+
+        if target_predictor_document is None:
+            raise ValueError(
+                f"No predictors found for {prediction_type}.{predictor_version}"
+            )
+
+        target_predictor = db_to_domain_predictor(target_predictor_document)
+
+        await self.adjust_traffic_distribution(
+            target_predictor_id=target_predictor.id,
+            metric=PredictorMetrics.PREDICTOR_TRAFFIC_UPDATE,
+            target_traffic=traffic,
+            description=description,
+        )
 
         updated_predictors = await self.find_predictors_by_prediction_type(
             prediction_type=prediction_type, only_actives=True

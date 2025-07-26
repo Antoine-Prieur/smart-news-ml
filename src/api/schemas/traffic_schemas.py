@@ -1,6 +1,17 @@
 from pydantic import BaseModel, Field
 
 
+class TrafficSetRequest(BaseModel):
+    prediction_type: str = Field(
+        ..., description="Type of prediction (e.g., 'sentiment_analysis')"
+    )
+    predictor_version: int = Field(..., description="Predictor version (e.g., 1)")
+    traffic: int = Field(..., description="New traffic", ge=0, le=100)
+    description: str | None = Field(
+        default=None, description="Small description to explain the changes"
+    )
+
+
 class TrafficShiftRequest(BaseModel):
     prediction_type: str = Field(
         ..., description="Type of prediction (e.g., 'sentiment_analysis')"

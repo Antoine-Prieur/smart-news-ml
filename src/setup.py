@@ -118,20 +118,12 @@ class MLPlatformSetup:
         sentiment_analysis_predictor_v2: SentimentAnalysisPredictorV2 = Provide[
             Container.sentiment_analysis_predictor_v2
         ],
-        news_classification_predictor_v1: NewsClassificationPredictorV1 = Provide[
-            Container.news_classification_predictor_v1
-        ],
-        news_classification_predictor_v2: NewsClassificationPredictorV2 = Provide[
-            Container.news_classification_predictor_v2
-        ],
         logger: Logger = Provide[Container.logger],
     ) -> None:
         """Initialize all application predictors"""
         try:
             await sentiment_analysis_predictor_v1.setup()
             await sentiment_analysis_predictor_v2.setup()
-            await news_classification_predictor_v1.setup()
-            await news_classification_predictor_v2.setup()
             logger.info("Application predictors initialized successfully")
 
         except Exception as e:

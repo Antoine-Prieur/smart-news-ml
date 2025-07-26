@@ -47,10 +47,7 @@ class ArticleService:
             sentiment_predictor_v2.predictor_version: sentiment_predictor_v2,
         }
 
-        self.news_classification_predictors: dict[int, BasePredictor] = {
-            news_classification_predictor_v1.predictor_version: news_classification_predictor_v1,
-            news_classification_predictor_v2.predictor_version: news_classification_predictor_v2,
-        }
+        self.news_classification_predictors: dict[int, BasePredictor] = {}
 
         self.article_predictions_repository = article_predictions_repository
         self.predictor_service = predictor_service
